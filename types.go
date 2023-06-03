@@ -79,7 +79,7 @@ func (kdlValue KDLValue) RecreateKDL() (string, error) {
 		}
 		return "{ " + s.String() + "}", nil
 	default:
-		return "", invalidTypeErr()
+		return "", ErrInvalidKdlType
 	}
 }
 

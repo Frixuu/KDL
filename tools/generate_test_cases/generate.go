@@ -72,10 +72,10 @@ import (
 		outputPath := filepath.Join(outputDir, name)
 		if _, err := os.Stat(outputPath); err != nil {
 			w.WriteString("\t_, err := ParseString(input)\n")
-			w.WriteString("\tassert.NotNil(t, err)\n")
+			w.WriteString("\tassert.Error(t, err)\n")
 		} else {
 			w.WriteString("\t_, err := ParseString(input)\n")
-			w.WriteString("\tassert.Nil(t, err)\n")
+			w.WriteString("\tassert.NoError(t, err)\n")
 		}
 
 		w.WriteString("}\n")

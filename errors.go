@@ -2,69 +2,40 @@ package kdlgo
 
 import (
 	"errors"
-	"strconv"
+	"fmt"
+	"io"
 )
 
-type KDLErrorType string
+var (
+	ErrEmptyArray      = errors.New("array is empty")
+	ErrDifferentKeys   = errors.New("all keys of KDLObject to convert to document should be the same")
+	ErrInvalidKeyChar  = errors.New("invalid character for key")
+	ErrInvalidNumValue = errors.New("invalid numeric value")
+	ErrInvalidSyntax   = errors.New("invalid syntax")
+	ErrInvalidKdlType  = errors.New("invalid KDLType")
+	ErrUnexpectedEOF   = io.ErrUnexpectedEOF
 
-const (
-	KDLEmptyArray      = "Array is empty"
-	KDLDifferentKey    = "All keys of KDLObject to convert to document should be the same"
-	KDLInvalidKeyChar  = "Invalid character for key"
-	KDLInvalidNumValue = "Invalid numeric value"
-	KDLInvalidSyntax   = "Invalid syntax"
-	KDLInvalidType     = "Invalid KDLType"
-	KDLUnexpectedEOF   = "Unexpected end of file"
-
-	// These should be caught and handled internally
-	kdlKeyOnly     = "Internal only: Key only"
-	kdlEndOfObj    = "Internal only: End of KDLObject"
-	kdlNothingLeft = "Internal only: Nothing else left to parse"
+	errKeyOnly     = errors.New("internal only: key only")
+	errEndOfObj    = errors.New("internal only: end of KDLObject")
+	errNothingLeft = errors.New("internal only: nothing else left to parse")
 )
 
-func wrapError(kdlr *kdlReader, err error) error {
-	return errors.New(
-		err.Error() + "\nOn line " + strconv.Itoa(kdlr.line) +
-			" column " + strconv.Itoa(kdlr.pos),
-	)
+// ErrWithPosition wraps an error,
+// adding information where in the document it happened.
+type ErrWithPosition struct {
+	Err    error // The original error.
+	Line   int
+	Column int
 }
 
-func differentKeysErr() error {
-	return errors.New(KDLDifferentKey)
+func (e *ErrWithPosition) Error() string {
+	return fmt.Sprintf("%s\n(on line %d, column %d)", e.Err.Error(), e.Line, e.Column)
 }
 
-func emptyArrayErr() error {
-	return errors.New(KDLEmptyArray)
+func (e *ErrWithPosition) Unwrap() error {
+	return e.Err
 }
 
-func invalidKeyCharErr() error {
-	return errors.New(KDLInvalidKeyChar)
-}
-
-func invalidNumValueErr() error {
-	return errors.New(KDLInvalidNumValue)
-}
-
-func invalidSyntaxErr() error {
-	return errors.New(KDLInvalidSyntax)
-}
-
-func invalidTypeErr() error {
-	return errors.New(KDLInvalidType)
-}
-
-func keyOnlyErr() error {
-	return errors.New(kdlKeyOnly)
-}
-
-func endOfObjErr() error {
-	return errors.New(kdlEndOfObj)
-}
-
-func nothingLeftErr() error {
-	return errors.New(kdlNothingLeft)
-}
-
-func unexpectedEOFErr() error {
-	return errors.New(KDLUnexpectedEOF)
+func addPosInfo(err error, r *kdlReader) error {
+	return &ErrWithPosition{Err: err, Line: r.line, Column: r.pos}
 }

@@ -1,6 +1,7 @@
 package kdlgo
 
 import (
+	"errors"
 	"strings"
 	"unicode"
 )
@@ -36,13 +37,13 @@ func parseObjects(kdlr *kdlReader, hasOpen bool, key string) (KDLObjects, error)
 			if obj != nil {
 				objects = append(objects, obj)
 			}
-		} else if err.Error() == eof || err.Error() == kdlEndOfObj {
+		} else if err.Error() == eof || errors.Is(err, errEndOfObj) {
 			if obj != nil {
 				objects = append(objects, obj)
 			}
 			return NewKDLObjects(key, objects), nil
 		} else {
-			return t, wrapError(kdlr, err)
+			return t, addPosInfo(err, kdlr)
 		}
 	}
 }
@@ -61,7 +62,7 @@ func parseObject(kdlr *kdlReader) (KDLObject, error) {
 
 		if r == closeBracket {
 			kdlr.discard(1)
-			return nil, endOfObjErr()
+			return nil, errEndOfObj
 		}
 
 		skipLine, err := lineComment(kdlr)
@@ -92,7 +93,7 @@ func parseObject(kdlr *kdlReader) (KDLObject, error) {
 	key, err := parseKey(kdlr)
 
 	if err != nil {
-		if err.Error() == kdlKeyOnly {
+		if errors.Is(err, errKeyOnly) {
 			return NewKDLDefault(key), nil
 		}
 		return nil, err
@@ -157,7 +158,7 @@ func parseObject(kdlr *kdlReader) (KDLObject, error) {
 
 		obj, err := parseVal(kdlr, key, r)
 		if err != nil {
-			if err.Error() == kdlEndOfObj {
+			if errors.Is(err, errEndOfObj) {
 				return ConvertToDocument(objects)
 			}
 			return nil, err
@@ -177,7 +178,7 @@ func parseKey(kdlr *kdlReader) (string, error) {
 		r, err := kdlr.readRune()
 		if err != nil {
 			if err.Error() == eof {
-				return checkQuotedString(key), keyOnlyErr()
+				return checkQuotedString(key), errKeyOnly
 			}
 			return key.String(), err
 		}
@@ -187,7 +188,7 @@ func parseKey(kdlr *kdlReader) (string, error) {
 			if key.Len() < 1 {
 				continue
 			} else if r == newline {
-				return checkQuotedString(key), keyOnlyErr()
+				return checkQuotedString(key), errKeyOnly
 			} else {
 				return checkQuotedString(key), nil
 			}
@@ -197,7 +198,7 @@ func parseKey(kdlr *kdlReader) (string, error) {
 			(key.Len() < 1 && unicode.IsNumber(r)) ||
 				(!isQuoted && unicode.IsSpace(r)) || r == equals
 		if invalid {
-			return key.String(), invalidKeyCharErr()
+			return key.String(), ErrInvalidKeyChar
 		}
 
 		if key.Len() < 1 {
@@ -216,18 +217,18 @@ func parseKey(kdlr *kdlReader) (string, error) {
 
 func parseVal(kdlr *kdlReader, key string, r rune) (KDLObject, error) {
 	value, err := parseValue(kdlr, key, r)
-	if err == nil || err.Error() == KDLInvalidNumValue {
+	if err == nil || errors.Is(err, ErrInvalidNumValue) {
 		return value, err
 	}
 
-	if err.Error() == kdlEndOfObj {
+	if errors.Is(err, errEndOfObj) {
 		return value, err
 	}
 
 	node, err := parseKey(kdlr)
 
-	if err != nil && err.Error() != KDLInvalidKeyChar {
-		if err.Error() == kdlKeyOnly {
+	if err != nil && !errors.Is(err, ErrInvalidKeyChar) {
+		if errors.Is(err, errKeyOnly) {
 			return NewKDLObjects(key, []KDLObject{NewKDLDefault(node)}), nil
 		}
 		return nil, err
@@ -285,10 +286,10 @@ func parseValue(kdlr *kdlReader, key string, r rune) (KDLObject, error) {
 		kdlr.discard(1)
 		return parseObjects(kdlr, true, key)
 	case closeBracket:
-		return nil, endOfObjErr()
+		return nil, errEndOfObj
 	}
 
-	return nil, invalidSyntaxErr()
+	return nil, ErrInvalidSyntax
 }
 
 func lineComment(kdlr *kdlReader) (bool, error) {

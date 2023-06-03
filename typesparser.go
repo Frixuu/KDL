@@ -65,7 +65,7 @@ func parseQuotedString(kdlr *kdlReader) (string, error) {
 
 			r = rune(temp[len(temp)-1])
 			if !(unicode.IsSpace(r) || r == semicolon) {
-				return toRet, invalidSyntaxErr()
+				return toRet, ErrInvalidSyntax
 			}
 			kdlr.discard(count)
 			return toRet, nil
@@ -101,7 +101,7 @@ func parseRawString(kdlr *kdlReader, key string) (KDLRawString, error) {
 			break
 		}
 
-		return kdlrs, invalidSyntaxErr()
+		return kdlrs, ErrInvalidSyntax
 	}
 
 	start := length
@@ -153,7 +153,7 @@ func parseNumber(kdlr *kdlReader, key string) (KDLNumber, error) {
 		if r == dot {
 			dotCount++
 			if dotCount > 1 {
-				return kdlnum, invalidNumValueErr()
+				return kdlnum, ErrInvalidNumValue
 			}
 		}
 
@@ -190,7 +190,7 @@ func parseNull(kdlr *kdlReader, key string) (KDLNull, error) {
 		return NewKDLNull(key), nil
 	}
 
-	return kdlnull, invalidSyntaxErr()
+	return kdlnull, ErrInvalidSyntax
 }
 
 func parseBool(kdlr *kdlReader, key string, start rune) (KDLBool, error) {
@@ -202,7 +202,7 @@ func parseBool(kdlr *kdlReader, key string, start rune) (KDLBool, error) {
 	} else if start == 'f' {
 		charset = []byte{'f', 'a', 'l', 's', 'e'}
 	} else {
-		return kdlbool, invalidSyntaxErr()
+		return kdlbool, ErrInvalidSyntax
 	}
 
 	next, err := kdlr.isNext(charset)
@@ -213,5 +213,5 @@ func parseBool(kdlr *kdlReader, key string, start rune) (KDLBool, error) {
 	if next {
 		return NewKDLBool(key, start == 't'), nil
 	}
-	return kdlbool, invalidSyntaxErr()
+	return kdlbool, ErrInvalidSyntax
 }

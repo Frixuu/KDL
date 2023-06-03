@@ -1,14 +1,15 @@
 package kdlgo
 
 import (
+	"path/filepath"
 	"strconv"
 	"testing"
 )
 
-//go:generate go run testdata/generate.go
+//go:generate go run tools/generate_test_cases/generate.go
 
 func TestParseFromFile(t *testing.T) {
-	objs, err := ParseFile("test.kdl")
+	objs, err := ParseFile(filepath.Join("testdata", "test.kdl"))
 	if err != nil {
 		t.Fatal(err)
 	}

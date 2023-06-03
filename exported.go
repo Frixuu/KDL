@@ -31,13 +31,13 @@ func ConvertToDocument(objs []KDLObject) (KDLDocument, error) {
 	var doc KDLDocument
 
 	if len(objs) < 1 {
-		return doc, emptyArrayErr()
+		return doc, ErrEmptyArray
 	}
 
 	key = objs[0].GetKey()
 	for _, obj := range objs {
 		if obj.GetKey() != key {
-			return doc, differentKeysErr()
+			return doc, ErrDifferentKeys
 		}
 
 		vals = append(vals, obj.GetValue())

@@ -1,4 +1,4 @@
-module github.com/binhonglee/kdlgo
+module github.com/frixuu/kdlgo
 
 go 1.16
 
