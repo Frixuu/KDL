@@ -1,4 +1,4 @@
-package kdlgo
+package kdl
 
 import (
 	"errors"

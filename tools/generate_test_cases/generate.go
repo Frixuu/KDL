@@ -34,7 +34,7 @@ func main() {
 
 	w.WriteString(`// Code generated automatically. DO NOT EDIT.
 
-package kdlgo
+package kdl
 
 import (
 	"testing"
