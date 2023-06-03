@@ -12,7 +12,7 @@ var (
 	ErrInvalidKeyChar  = errors.New("invalid character for key")
 	ErrInvalidNumValue = errors.New("invalid numeric value")
 	ErrInvalidSyntax   = errors.New("invalid syntax")
-	ErrInvalidKdlType  = errors.New("invalid KDLType")
+	ErrInvalidTypeTag  = errors.New("value has invalid KDL type tag")
 	ErrUnexpectedEOF   = io.ErrUnexpectedEOF
 
 	errKeyOnly     = errors.New("internal only: key only")
@@ -36,6 +36,6 @@ func (e *ErrWithPosition) Unwrap() error {
 	return e.Err
 }
 
-func addPosInfo(err error, r *kdlReader) error {
+func addPosInfo(err error, r *reader) error {
 	return &ErrWithPosition{Err: err, Line: r.line, Column: r.pos}
 }

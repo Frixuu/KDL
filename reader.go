@@ -5,18 +5,18 @@ import (
 	"bytes"
 )
 
-type kdlReader struct {
+type reader struct {
+	reader  *bufio.Reader
 	line    int
 	pos     int
 	current rune
-	reader  *bufio.Reader
 }
 
-func newKDLReader(r *bufio.Reader) *kdlReader {
-	return &kdlReader{line: 1, pos: 0, reader: r}
+func newKDLReader(r *bufio.Reader) *reader {
+	return &reader{line: 1, pos: 0, reader: r}
 }
 
-func (kdlr *kdlReader) readRune() (rune, error) {
+func (kdlr *reader) readRune() (rune, error) {
 	r, _, err := kdlr.reader.ReadRune()
 	if r == '\n' {
 		kdlr.line++
@@ -32,11 +32,11 @@ func (kdlr *kdlReader) readRune() (rune, error) {
 	return r, err
 }
 
-func (kdlr *kdlReader) lastRead() rune {
+func (kdlr *reader) lastRead() rune {
 	return kdlr.current
 }
 
-func (kdlr *kdlReader) discardLine() error {
+func (kdlr *reader) discardLine() error {
 	_, err := kdlr.reader.ReadString('\n')
 	if err != nil {
 		return err
@@ -46,7 +46,7 @@ func (kdlr *kdlReader) discardLine() error {
 	return err
 }
 
-func (kdlr *kdlReader) discard(count int) {
+func (kdlr *reader) discard(count int) {
 	s, _ := kdlr.peekX(count)
 	for _, b := range s {
 		var nl byte = '\n'
@@ -60,11 +60,11 @@ func (kdlr *kdlReader) discard(count int) {
 	kdlr.reader.Discard(count)
 }
 
-func (kdlr *kdlReader) peekX(count int) ([]byte, error) {
+func (kdlr *reader) peekX(count int) ([]byte, error) {
 	return kdlr.reader.Peek(count)
 }
 
-func (kdlr *kdlReader) peek() (rune, error) {
+func (kdlr *reader) peek() (rune, error) {
 	r, _, err := kdlr.reader.ReadRune()
 	if err != nil {
 		return r, err
@@ -74,7 +74,7 @@ func (kdlr *kdlReader) peek() (rune, error) {
 	return r, err
 }
 
-func (kdlr *kdlReader) unreadRune() error {
+func (kdlr *reader) unreadRune() error {
 	err := kdlr.reader.UnreadRune()
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (kdlr *kdlReader) unreadRune() error {
 	return nil
 }
 
-func (kdlr *kdlReader) isNext(charset []byte) (bool, error) {
+func (kdlr *reader) isNext(charset []byte) (bool, error) {
 	peek, err := kdlr.peekX(len(charset))
 	if err != nil {
 		return false, err

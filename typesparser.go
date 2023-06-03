@@ -16,7 +16,7 @@ func checkQuotedString(s strings.Builder) string {
 	}
 }
 
-func parseString(kdlr *kdlReader, key string) (KDLString, error) {
+func parseString(kdlr *reader, key string) (KDLString, error) {
 	var kdls KDLString
 	s, err := parseQuotedString(kdlr)
 	if err != nil {
@@ -25,7 +25,7 @@ func parseString(kdlr *kdlReader, key string) (KDLString, error) {
 	return NewKDLString(key, s), nil
 }
 
-func parseQuotedString(kdlr *kdlReader) (string, error) {
+func parseQuotedString(kdlr *reader) (string, error) {
 	count := 2
 
 	for {
@@ -79,7 +79,7 @@ func stringEscape(s string) string {
 	return strings.ReplaceAll(s, "\\/", "/")
 }
 
-func parseRawString(kdlr *kdlReader, key string) (KDLRawString, error) {
+func parseRawString(kdlr *reader, key string) (KDLRawString, error) {
 	var kdlrs KDLRawString
 	count := 0
 	length := 0
@@ -138,7 +138,7 @@ func parseRawString(kdlr *kdlReader, key string) (KDLRawString, error) {
 	}
 }
 
-func parseNumber(kdlr *kdlReader, key string) (KDLNumber, error) {
+func parseNumber(kdlr *reader, key string) (KDLNumber, error) {
 	var kdlnum KDLNumber
 	length := 0
 	dotCount := 0
@@ -178,7 +178,7 @@ func parseNumber(kdlr *kdlReader, key string) (KDLNumber, error) {
 	}
 }
 
-func parseNull(kdlr *kdlReader, key string) (KDLNull, error) {
+func parseNull(kdlr *reader, key string) (KDLNull, error) {
 	var kdlnull KDLNull
 	charset := []byte{'n', 'u', 'l', 'l'}
 	next, err := kdlr.isNext(charset)
@@ -193,7 +193,7 @@ func parseNull(kdlr *kdlReader, key string) (KDLNull, error) {
 	return kdlnull, ErrInvalidSyntax
 }
 
-func parseBool(kdlr *kdlReader, key string, start rune) (KDLBool, error) {
+func parseBool(kdlr *reader, key string, start rune) (KDLBool, error) {
 	var kdlbool KDLBool
 	var charset []byte
 

@@ -36,14 +36,15 @@ func TestParseFromFile(t *testing.T) {
 		`test "value"`,
 	}
 
-	if len(objs.GetValue().Objects) != len(expected) {
+	objects, _ := objs.GetValue().RawValue.([]KDLObject)
+	if len(objects) != len(expected) {
 		t.Fatal(
 			"There should be " + strconv.Itoa(len(expected)) +
-				" KDLObjects. Got " + strconv.Itoa(len(objs.GetValue().Objects)) + " instead.",
+				" KDLObjects. Got " + strconv.Itoa(len(objects)) + " instead.",
 		)
 	}
 
-	for i, obj := range objs.GetValue().Objects {
+	for i, obj := range objects {
 		s, err := RecreateKDLObj(obj)
 		if err != nil {
 			t.Fatal(err)

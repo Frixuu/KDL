@@ -28,7 +28,7 @@ const (
 	closeParenthesis = ')'
 )
 
-func parseObjects(kdlr *kdlReader, hasOpen bool, key string) (KDLObjects, error) {
+func parseObjects(kdlr *reader, hasOpen bool, key string) (KDLObjects, error) {
 	var t KDLObjects
 	var objects []KDLObject
 	for {
@@ -48,7 +48,7 @@ func parseObjects(kdlr *kdlReader, hasOpen bool, key string) (KDLObjects, error)
 	}
 }
 
-func parseObject(kdlr *kdlReader) (KDLObject, error) {
+func parseObject(kdlr *reader) (KDLObject, error) {
 	for {
 		err := blockComment(kdlr)
 		if err != nil {
@@ -169,7 +169,7 @@ func parseObject(kdlr *kdlReader) (KDLObject, error) {
 	}
 }
 
-func parseKey(kdlr *kdlReader) (string, error) {
+func parseKey(kdlr *reader) (string, error) {
 	var key strings.Builder
 	isQuoted := false
 	prev := newline
@@ -215,7 +215,7 @@ func parseKey(kdlr *kdlReader) (string, error) {
 	}
 }
 
-func parseVal(kdlr *kdlReader, key string, r rune) (KDLObject, error) {
+func parseVal(kdlr *reader, key string, r rune) (KDLObject, error) {
 	value, err := parseValue(kdlr, key, r)
 	if err == nil || errors.Is(err, ErrInvalidNumValue) {
 		return value, err
@@ -250,7 +250,7 @@ func parseVal(kdlr *kdlReader, key string, r rune) (KDLObject, error) {
 	return NewKDLObjects(key, []KDLObject{obj}), nil
 }
 
-func parseValue(kdlr *kdlReader, key string, r rune) (KDLObject, error) {
+func parseValue(kdlr *reader, key string, r rune) (KDLObject, error) {
 	for {
 		if r != space {
 			break
@@ -292,7 +292,7 @@ func parseValue(kdlr *kdlReader, key string, r rune) (KDLObject, error) {
 	return nil, ErrInvalidSyntax
 }
 
-func lineComment(kdlr *kdlReader) (bool, error) {
+func lineComment(kdlr *reader) (bool, error) {
 	skipLine, _ := kdlr.isNext([]byte{slash, slash})
 	if skipLine {
 		err := kdlr.discardLine()
@@ -304,7 +304,7 @@ func lineComment(kdlr *kdlReader) (bool, error) {
 	return false, nil
 }
 
-func blockComment(kdlr *kdlReader) error {
+func blockComment(kdlr *reader) error {
 	count := 0
 	open := []byte{slash, asterisk}
 	close := []byte{asterisk, slash}
