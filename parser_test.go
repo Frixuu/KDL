@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+//go:generate go run testdata/generate.go
+
 func TestParseFromFile(t *testing.T) {
 	objs, err := ParseFile("test.kdl")
 	if err != nil {

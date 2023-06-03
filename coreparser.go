@@ -268,6 +268,8 @@ func parseValue(kdlr *kdlReader, key string, r rune) (KDLObject, error) {
 	}
 
 	switch r {
+	case '-':
+		return parseNumber(kdlr, key)
 	case dquote:
 		return parseString(kdlr, key)
 	case 'n':
