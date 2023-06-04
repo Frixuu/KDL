@@ -250,42 +250,38 @@ func parseVal(kdlr *reader, key string, r rune) (KDLObject, error) {
 	return NewKDLObjects(key, []KDLObject{obj}), nil
 }
 
-func parseValue(kdlr *reader, key string, r rune) (KDLObject, error) {
-	for {
-		if r != space {
-			break
-		}
-		kdlr.discard(1)
+func parseValue(r *reader, key string, ch rune) (KDLObject, error) {
 
+	for ch == ' ' {
 		var err error
-		r, err = kdlr.peek()
+		ch, err = r.readRune()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if unicode.IsNumber(r) {
-		return parseNumber(kdlr, key)
+	if unicode.IsNumber(ch) || ch == '-' {
+		n, err := readNumber(r)
+		return KDLNumber{key: key, value: NewNumberValue(n, "")}, err
 	}
 
-	switch r {
-	case '-':
-		return parseNumber(kdlr, key)
-	case dquote:
-		return parseString(kdlr, key)
+	switch ch {
+	case '"':
+		s, err := readQuotedString(r)
+		return KDLString{key: key, value: NewStringValue(s, "")}, err
 	case 'n':
-		return parseNull(kdlr, key)
-	case 't':
-		fallthrough
-	case 'f':
-		return parseBool(kdlr, key, r)
+		return KDLNull{key: key, value: NewNullValue()}, readNull(r)
+	case 't', 'f':
+		b, err := readBool(r)
+		return KDLBool{key: key, value: NewBoolValue(b, "")}, err
 	case 'r':
-		kdlr.discard(1)
-		return parseRawString(kdlr, key)
-	case openBracket:
-		kdlr.discard(1)
-		return parseObjects(kdlr, true, key)
-	case closeBracket:
+		r.discard(1)
+		s, err := readRawString(r)
+		return KDLRawString{key: key, value: NewStringValue(s, "")}, err
+	case '{':
+		r.discard(1)
+		return parseObjects(r, true, key)
+	case '}':
 		return nil, errEndOfObj
 	}
 

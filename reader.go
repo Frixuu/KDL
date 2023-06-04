@@ -12,93 +12,94 @@ type reader struct {
 	current rune
 }
 
-func newKDLReader(r *bufio.Reader) *reader {
-	return &reader{line: 1, pos: 0, reader: r}
+func wrapReader(r *bufio.Reader) *reader {
+	return &reader{reader: r, line: 1, pos: 0}
 }
 
-func (kdlr *reader) readRune() (rune, error) {
-	r, _, err := kdlr.reader.ReadRune()
-	if r == '\n' {
-		kdlr.line++
-		kdlr.pos = 0
+func (r *reader) readRune() (rune, error) {
+	ch, _, err := r.reader.ReadRune()
+	if ch == '\n' {
+		r.line++
+		r.pos = 0
 	} else {
-		kdlr.pos++
+		r.pos++
 	}
 
 	if err == nil {
-		kdlr.current = r
+		r.current = ch
 	}
 
-	return r, err
+	return ch, err
 }
 
-func (kdlr *reader) lastRead() rune {
-	return kdlr.current
+func (r *reader) lastRead() rune {
+	return r.current
 }
 
-func (kdlr *reader) discardLine() error {
-	_, err := kdlr.reader.ReadString('\n')
+func (r *reader) discardLine() error {
+	_, err := r.reader.ReadString('\n')
 	if err != nil {
 		return err
 	}
 
-	err = kdlr.reader.UnreadByte()
+	err = r.reader.UnreadByte()
 	return err
 }
 
-func (kdlr *reader) discard(count int) {
-	s, _ := kdlr.peekX(count)
+func (r *reader) discard(count int) {
+	s, _ := r.peekN(count)
 	for _, b := range s {
 		var nl byte = '\n'
 		if b == nl {
-			kdlr.line++
-			kdlr.pos = 0
+			r.line++
+			r.pos = 0
 		} else {
-			kdlr.pos++
+			r.pos++
 		}
 	}
-	kdlr.reader.Discard(count)
+	r.reader.Discard(count)
 }
 
-func (kdlr *reader) peekX(count int) ([]byte, error) {
-	return kdlr.reader.Peek(count)
+func (r *reader) peekN(count int) ([]byte, error) {
+	return r.reader.Peek(count)
 }
 
-func (kdlr *reader) peek() (rune, error) {
-	r, _, err := kdlr.reader.ReadRune()
+func (r *reader) peek() (rune, error) {
+	ch, _, err := r.reader.ReadRune()
 	if err != nil {
-		return r, err
+		return ch, err
 	}
 
-	err = kdlr.reader.UnreadRune()
-	return r, err
+	err = r.reader.UnreadRune()
+	return ch, err
 }
 
-func (kdlr *reader) unreadRune() error {
-	err := kdlr.reader.UnreadRune()
+func (r *reader) unreadRune() error {
+	err := r.reader.UnreadRune()
 	if err != nil {
 		return err
 	}
 
-	peek, _ := kdlr.reader.Peek(1)
+	peek, _ := r.reader.Peek(1)
 	var b byte = '\n'
 	if peek[0] == b {
-		kdlr.line--
+		r.line--
 	} else {
-		kdlr.pos--
+		r.pos--
 	}
 
 	return nil
 }
 
-func (kdlr *reader) isNext(charset []byte) (bool, error) {
-	peek, err := kdlr.peekX(len(charset))
+func (r *reader) isNext(expected []byte) (bool, error) {
+
+	next, err := r.peekN(len(expected))
 	if err != nil {
 		return false, err
 	}
 
-	if bytes.Compare(peek, charset) == 0 {
-		kdlr.discard(len(charset))
+	if bytes.Equal(next, expected) {
+		r.discard(len(expected))
 		return true, nil
 	}
 

@@ -21,7 +21,7 @@ func ParseString(toParse string) (KDLObjects, error) {
 }
 
 func ParseReader(reader *bufio.Reader) (KDLObjects, error) {
-	r := newKDLReader(reader)
+	r := wrapReader(reader)
 	return parseObjects(r, false, "")
 }
 

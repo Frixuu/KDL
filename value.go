@@ -7,7 +7,9 @@ import (
 type TypeTag int
 
 const (
-	TypeNull TypeTag = iota + 1
+	TypeInvalid TypeTag = iota
+
+	TypeNull
 	TypeBool
 	TypeNumber
 	TypeString
@@ -23,6 +25,14 @@ type Value struct {
 	RawValue interface{}
 }
 
+func NewNullValue() Value {
+	return Value{Type: TypeNull}
+}
+
+func NewBoolValue(v bool, hint string) Value {
+	return Value{Type: TypeBool, RawValue: v, TypeHint: Identifier(hint)}
+}
+
 func (v *Value) AsBool() bool {
 	if v.Type != TypeBool {
 		panic("value is not a boolean")
@@ -30,11 +40,19 @@ func (v *Value) AsBool() bool {
 	return v.RawValue.(bool)
 }
 
+func NewNumberValue(v *big.Float, hint string) Value {
+	return Value{Type: TypeNumber, RawValue: v, TypeHint: Identifier(hint)}
+}
+
 func (v *Value) AsNumber() *big.Float {
 	if v.Type != TypeNumber {
 		panic("value is not a number")
 	}
 	return v.RawValue.(*big.Float)
+}
+
+func NewStringValue(v string, hint string) Value {
+	return Value{Type: TypeString, RawValue: v, TypeHint: Identifier(hint)}
 }
 
 func (v *Value) AsString() string {
