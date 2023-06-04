@@ -27,7 +27,7 @@ func ParseReader(reader *bufio.Reader) (KDLObjects, error) {
 
 func ConvertToDocument(objs []KDLObject) (KDLDocument, error) {
 	var key string
-	var vals []KDLValue
+	var vals []Value
 	var doc KDLDocument
 
 	if len(objs) < 1 {

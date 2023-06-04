@@ -1,4 +1,4 @@
-module github.com/frixuu/kdl
+module github.com/frixuu/kdlgo
 
 go 1.18
 
