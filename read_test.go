@@ -84,14 +84,14 @@ func expectNumber(t *testing.T, r *reader, v float64) {
 }
 
 func TestReadsNumberDecimal(t *testing.T) {
-	reader := readerFromString("4 +2 -6 1_33_7 4e3 7e-2 -1.1e2.2")
+	reader := readerFromString("4 +2 -6 1_33_7 4e3 7e-2 -1.1e-2")
 	expectNumber(t, reader, 4.0)
 	expectNumber(t, reader, 2.0)
 	expectNumber(t, reader, -6.0)
 	expectNumber(t, reader, 1337.0)
 	expectNumber(t, reader, 4000.0)
 	expectNumber(t, reader, 0.07)
-	//expectNumber(t, reader, -174.33825117)
+	expectNumber(t, reader, -0.011)
 }
 
 func TestReadsNumberHex(t *testing.T) {

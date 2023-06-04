@@ -10,8 +10,8 @@ var (
 	ErrEmptyArray      = errors.New("array is empty")
 	ErrDifferentKeys   = errors.New("all keys of KDLObject to convert to document should be the same")
 	ErrInvalidKeyChar  = errors.New("invalid character for key")
-	ErrInvalidNumValue = errors.New("invalid numeric value")
 	ErrInvalidSyntax   = errors.New("invalid syntax")
+	ErrInvalidNumValue = fmt.Errorf("%w: bad numeric value", ErrInvalidSyntax)
 	ErrInvalidTypeTag  = errors.New("value has invalid KDL type tag")
 	ErrUnexpectedEOF   = io.ErrUnexpectedEOF
 

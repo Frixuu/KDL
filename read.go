@@ -1,8 +1,11 @@
 package kdl
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -197,45 +200,107 @@ func readNull(r *reader) error {
 	return ErrExpectedNull
 }
 
+var (
+	patternDecimal = regexp.MustCompile(`^[-+]?[0-9][_0-9]*(\.[0-9][_0-9]*)?([eE][-+]?[0-9][_0-9]*)?$`)
+	patternHex     = regexp.MustCompile(`^[-+]?0x[0-9a-fA-F][_0-9a-fA-F]*$`)
+	patternOctal   = regexp.MustCompile(`^[-+]?0o[0-7][_0-7]*$`)
+	patternBinary  = regexp.MustCompile(`^[-+]?0b[01][_01]*$`)
+
+	ErrBadDecimal = fmt.Errorf("%w (decimal does not match pattern)", ErrInvalidNumValue)
+	ErrBadHex     = fmt.Errorf("%w (hex does not match pattern)", ErrInvalidNumValue)
+	ErrBadOctal   = fmt.Errorf("%w (octal does not match pattern)", ErrInvalidNumValue)
+	ErrBadBinary  = fmt.Errorf("%w (binary does not match pattern)", ErrInvalidNumValue)
+
+	ErrEmptyNumber         = fmt.Errorf("%w (number is empty)", ErrInvalidNumValue)
+	ErrSepsOnlyInDecimals  = fmt.Errorf("%w (separators available only in numbers base 10)", ErrInvalidNumValue)
+	ErrTooManySepsInNumber = fmt.Errorf("%w (too many decimal separators)", ErrInvalidNumValue)
+)
+
 func readNumber(r *reader) (*big.Float, error) {
 
 	length := 0
-	dotCount := 0
+	var bytes []byte
+	var err error
 
 	for {
 
 		length++
 
-		bytes, err := r.peekN(length)
-		if err != nil && err.Error() != eof {
+		bytes, err = r.peekN(length)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			return big.NewFloat(0), err
 		}
 
 		ch := rune(bytes[len(bytes)-1])
-		if ch == dot {
-			dotCount++
-			if dotCount > 1 {
-				return big.NewFloat(0), ErrInvalidNumValue
-			}
-		}
-
-		if ch == ';' || unicode.IsSpace(ch) ||
-			ch == '/' || (err != nil && err.Error() == eof) {
-			rawStr := string(bytes[0 : len(bytes)-1])
-			if err != nil && err.Error() == eof {
-				rawStr = string(bytes)
-			}
-
-			r.discard(length - 1)
-
-			str := strings.ReplaceAll(rawStr, "_", "")
-			value, err := strconv.ParseFloat(str, 64)
-			if err == nil {
-				return big.NewFloat(value), nil
-			}
-
-			val, err := strconv.ParseInt(str, 0, 64)
-			return new(big.Float).SetInt64(val), err
+		if ch == ';' || ch == '/' || unicode.IsSpace(ch) {
+			bytes = bytes[0 : len(bytes)-1]
+			break
 		}
 	}
+
+	strOriginal := string(bytes)
+	r.discard(length - 1)
+
+	str := strOriginal
+	if len(str) == 0 {
+		return big.NewFloat(0), ErrEmptyNumber
+	}
+
+	sign := 0
+	if str[0] == '-' {
+		sign = -1
+	} else if str[0] == '+' {
+		sign = 1
+	}
+
+	if sign != 0 {
+		str = str[1:]
+	}
+
+	base := 10
+	if len(str) > 2 {
+		if strings.HasPrefix(str, "0b") {
+			base = 2
+			if !patternBinary.MatchString(strOriginal) {
+				return big.NewFloat(0), ErrBadBinary
+			}
+		} else if strings.HasPrefix(str, "0o") {
+			base = 8
+			if !patternOctal.MatchString(strOriginal) {
+				return big.NewFloat(0), ErrBadOctal
+			}
+		} else if strings.HasPrefix(str, "0x") {
+			base = 16
+			if !patternHex.MatchString(strOriginal) {
+				return big.NewFloat(0), ErrBadHex
+			}
+		}
+	}
+
+	if base == 10 {
+		if !patternDecimal.MatchString(strOriginal) {
+			return big.NewFloat(0), ErrBadDecimal
+		}
+	} else {
+		str = str[2:]
+		if strings.ContainsRune(str, '.') {
+			return big.NewFloat(0), ErrSepsOnlyInDecimals
+		}
+	}
+
+	if sign < 0 {
+		str = "-" + str
+	}
+
+	str = strings.ReplaceAll(str, "_", "")
+	if base == 10 {
+		f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
+		return f, err
+	}
+
+	val, err := strconv.ParseInt(str, base, 64)
+	return new(big.Float).SetInt64(val), err
 }
