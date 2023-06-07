@@ -1,5 +1,6 @@
 package kdl
 
+// Node is an object in a KDL Document.
 type Node struct {
 	Name     Identifier
 	Args     []Value
@@ -8,6 +9,7 @@ type Node struct {
 	TypeHint Identifier
 }
 
+// NewNode creates a new KDL node.
 func NewNode(name string) Node {
 	return Node{
 		Name:     Identifier(name),
@@ -16,4 +18,19 @@ func NewNode(name string) Node {
 		Children: make([]Node, 0),
 		TypeHint: Identifier(""),
 	}
+}
+
+// AddArg adds a Value as an order-sensitive argument of this Node.
+func (n *Node) AddArg(arg Value) {
+	n.Args = append(n.Args, arg)
+}
+
+// AddChild adds another Node as an order-sensitive child of this Node.
+func (n *Node) AddChild(child Node) {
+	n.Children = append(n.Children, child)
+}
+
+// SetProp sets or replaces a property of this Node.
+func (n *Node) SetProp(key Identifier, value Value) {
+	n.Props[key] = value
 }

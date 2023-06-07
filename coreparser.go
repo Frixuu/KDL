@@ -28,11 +28,11 @@ const (
 	closeParenthesis = ')'
 )
 
-func parseObjects(kdlr *reader, hasOpen bool, key string) (KDLObjects, error) {
+func parseObjects(r *reader, hasOpen bool, key string) (KDLObjects, error) {
 	var t KDLObjects
 	var objects []KDLObject
 	for {
-		obj, err := parseObject(kdlr)
+		obj, err := parseObject(r)
 		if err == nil {
 			if obj != nil {
 				objects = append(objects, obj)
@@ -43,7 +43,7 @@ func parseObjects(kdlr *reader, hasOpen bool, key string) (KDLObjects, error) {
 			}
 			return NewKDLObjects(key, objects), nil
 		} else {
-			return t, addPosInfo(err, kdlr)
+			return t, addPosInfo(err, r)
 		}
 	}
 }
@@ -178,7 +178,7 @@ func parseKey(kdlr *reader) (string, error) {
 		r, err := kdlr.readRune()
 		if err != nil {
 			if err.Error() == eof {
-				return checkQuotedString(key), errKeyOnly
+				return tryUnquote(key), errKeyOnly
 			}
 			return key.String(), err
 		}
@@ -188,9 +188,9 @@ func parseKey(kdlr *reader) (string, error) {
 			if key.Len() < 1 {
 				continue
 			} else if r == newline {
-				return checkQuotedString(key), errKeyOnly
+				return tryUnquote(key), errKeyOnly
 			} else {
-				return checkQuotedString(key), nil
+				return tryUnquote(key), nil
 			}
 		}
 

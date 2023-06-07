@@ -10,6 +10,7 @@ type reader struct {
 	line    int
 	pos     int
 	current rune
+	depth   int
 }
 
 func wrapReader(r *bufio.Reader) *reader {
@@ -60,6 +61,7 @@ func (r *reader) discard(count int) {
 	r.reader.Discard(count)
 }
 
+// peekN tries to return next N bytes without advancing the reader.
 func (r *reader) peekN(count int) ([]byte, error) {
 	return r.reader.Peek(count)
 }
