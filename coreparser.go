@@ -2,6 +2,7 @@ package kdl
 
 import (
 	"errors"
+	"io"
 	"strings"
 	"unicode"
 )
@@ -49,40 +50,19 @@ func parseObjects(r *reader, hasOpen bool, key string) (KDLObjects, error) {
 }
 
 func parseObject(kdlr *reader) (KDLObject, error) {
-	for {
-		err := blockComment(kdlr)
-		if err != nil {
-			return nil, err
-		}
 
-		r, err := kdlr.peek()
-		if err != nil {
-			return nil, err
-		}
+	r, err := kdlr.peek()
+	if err != nil {
+		return nil, err
+	}
 
-		if r == closeBracket {
-			kdlr.discard(1)
-			return nil, errEndOfObj
-		}
+	if err = readUntilSignificant(kdlr); err != nil {
+		return nil, err
+	}
 
-		skipLine, err := lineComment(kdlr)
-		if err != nil {
-			if err.Error() == eof && skipLine {
-				return nil, nil
-			}
-			return nil, err
-		}
-
-		if skipLine {
-			continue
-		}
-
-		if unicode.IsSpace(r) {
-			kdlr.discard(1)
-			continue
-		}
-
-		break
+	if r == closeBracket {
+		kdlr.discard(1)
+		return nil, errEndOfObj
 	}
 
 	skipNext, _ := kdlr.isNext([]byte{slash, dash})
@@ -101,8 +81,8 @@ func parseObject(kdlr *reader) (KDLObject, error) {
 
 	var objects []KDLObject
 	for {
-		err = blockComment(kdlr)
-		if err != nil && err.Error() != eof {
+
+		if err = readUntilSignificant(kdlr); err != nil {
 			return nil, err
 		}
 
@@ -144,16 +124,11 @@ func parseObject(kdlr *reader) (KDLObject, error) {
 			}
 		}
 
-		skipLine, err := lineComment(kdlr)
-		if err != nil {
-			if err.Error() == eof && skipLine {
+		if err = readUntilSignificant(kdlr); err != nil {
+			if errors.Is(err, io.EOF) {
 				return ConvertToDocument(objects)
 			}
 			return nil, err
-		}
-
-		if skipLine {
-			continue
 		}
 
 		obj, err := parseVal(kdlr, key, r)
@@ -286,63 +261,4 @@ func parseValue(r *reader, key string, ch rune) (KDLObject, error) {
 	}
 
 	return nil, ErrInvalidSyntax
-}
-
-func lineComment(kdlr *reader) (bool, error) {
-	skipLine, _ := kdlr.isNext([]byte{slash, slash})
-	if skipLine {
-		err := kdlr.discardLine()
-		if err != nil && err.Error() != eof {
-			return false, err
-		}
-		return true, err
-	}
-	return false, nil
-}
-
-func blockComment(kdlr *reader) error {
-	count := 0
-	open := []byte{slash, asterisk}
-	close := []byte{asterisk, slash}
-
-	for {
-		isBlock, err := kdlr.isNext(open)
-		if err != nil {
-			return err
-		}
-
-		if isBlock {
-			count++
-		}
-
-		break
-	}
-
-	for {
-		if count == 0 {
-			return nil
-		}
-
-		isOpen, err := kdlr.isNext(open)
-		if err != nil {
-			return err
-		}
-
-		if isOpen {
-			count++
-			continue
-		}
-
-		isClose, err := kdlr.isNext(close)
-		if err != nil {
-			return err
-		}
-
-		if isClose {
-			count--
-			continue
-		}
-
-		kdlr.discard(1)
-	}
 }

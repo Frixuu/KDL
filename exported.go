@@ -31,7 +31,7 @@ func ConvertToDocument(objs []KDLObject) (KDLDocument, error) {
 	var doc KDLDocument
 
 	if len(objs) < 1 {
-		return doc, ErrEmptyArray
+		return doc, nil
 	}
 
 	key = objs[0].GetKey()
@@ -42,5 +42,6 @@ func ConvertToDocument(objs []KDLObject) (KDLDocument, error) {
 
 		vals = append(vals, obj.GetValue())
 	}
-	return NewKDLDocument(key, vals), nil
+
+	return KDLDocument{key: key, value: Value{Type: TypeDocument, RawValue: vals}}, nil
 }

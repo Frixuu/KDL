@@ -1,7 +1,6 @@
 package kdl
 
 import (
-	"math/big"
 	"strconv"
 	"strings"
 )
@@ -94,10 +93,6 @@ type KDLBool struct {
 	value Value
 }
 
-func NewKDLBool(key string, value bool) KDLBool {
-	return KDLBool{key: key, value: Value{Type: TypeBool, RawValue: value}}
-}
-
 func (kdlNode KDLBool) GetKey() string {
 	return kdlNode.key
 }
@@ -109,10 +104,6 @@ func (kdlNode KDLBool) GetValue() Value {
 type KDLNumber struct {
 	key   string
 	value Value
-}
-
-func NewKDLNumber(key string, value float64) KDLNumber {
-	return KDLNumber{key: key, value: Value{Type: TypeNumber, RawValue: big.NewFloat(value)}}
 }
 
 func (kdlNode KDLNumber) GetKey() string {
@@ -128,12 +119,6 @@ type KDLString struct {
 	value Value
 }
 
-func NewKDLString(key string, value string) KDLString {
-	value = strings.ReplaceAll(value, "\n", "\\n")
-	s, _ := strconv.Unquote(`"` + value + `"`)
-	return KDLString{key: key, value: Value{Type: TypeString, RawValue: s}}
-}
-
 func (kdlNode KDLString) GetKey() string {
 	return kdlNode.key
 }
@@ -145,10 +130,6 @@ func (kdlNode KDLString) GetValue() Value {
 type KDLRawString struct {
 	key   string
 	value Value
-}
-
-func NewKDLRawString(key string, value string) KDLRawString {
-	return KDLRawString{key: key, value: Value{Type: TypeString, RawValue: value}}
 }
 
 func (kdlNode KDLRawString) GetKey() string {
@@ -164,10 +145,6 @@ type KDLDocument struct {
 	value Value
 }
 
-func NewKDLDocument(key string, value []Value) KDLDocument {
-	return KDLDocument{key: key, value: Value{Type: TypeDocument, RawValue: value}}
-}
-
 func (kdlNode KDLDocument) GetKey() string {
 	return kdlNode.key
 }
@@ -179,10 +156,6 @@ func (kdlNode KDLDocument) GetValue() Value {
 type KDLNull struct {
 	key   string
 	value Value
-}
-
-func NewKDLNull(key string) KDLNull {
-	return KDLNull{key: key, value: Value{Type: TypeNull}}
 }
 
 func (kdlNode KDLNull) GetKey() string {

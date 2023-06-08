@@ -6,14 +6,24 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func writeArgs(w *writer, a []Value) error {
+// writeArgs serializes Node's arguments.
+func writeArgs(w *writer, n *Node) error {
 
-	for i := range a {
-		arg := &a[i]
+	args := n.Args
+	if len(args) == 0 {
+		return nil
+	}
+
+	for i := range args {
+
+		arg := &args[i]
+
 		if err := writeValue(w, arg); err != nil {
 			return err
 		}
-		if i+1 < len(a) {
+
+		// Join arguments with a single space
+		if i+1 < len(args) {
 			if err := writeSpace(w); err != nil {
 				return err
 			}
@@ -23,9 +33,10 @@ func writeArgs(w *writer, a []Value) error {
 	return nil
 }
 
-func writeProps(w *writer, p map[Identifier]Value) error {
+// writeProps serializes [Node]'s properties.
+func writeProps(w *writer, n *Node) error {
 
-	// If there are no props, there is nothing to write
+	p := n.Props
 	if len(p) == 0 {
 		return nil
 	}
@@ -37,7 +48,9 @@ func writeProps(w *writer, p map[Identifier]Value) error {
 	})
 
 	for i := range props {
+
 		prop := &props[i]
+
 		if err := writeIdentifier(w, prop.key); err != nil {
 			return err
 		}
@@ -47,6 +60,8 @@ func writeProps(w *writer, p map[Identifier]Value) error {
 		if err := writeValue(w, &prop.value); err != nil {
 			return err
 		}
+
+		// Join properties with a single space
 		if i+1 < len(p) {
 			if err := writeSpace(w); err != nil {
 				return err
@@ -72,7 +87,7 @@ func writeNode(w *writer, n *Node) error {
 		if err := writeSpace(w); err != nil {
 			return err
 		}
-		if err := writeArgs(w, n.Args); err != nil {
+		if err := writeArgs(w, n); err != nil {
 			return err
 		}
 	}
@@ -81,7 +96,7 @@ func writeNode(w *writer, n *Node) error {
 		if err := writeSpace(w); err != nil {
 			return err
 		}
-		if err := writeProps(w, n.Props); err != nil {
+		if err := writeProps(w, n); err != nil {
 			return err
 		}
 	}

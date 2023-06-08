@@ -11,17 +11,16 @@ import (
 	"unicode"
 )
 
-func readQuotedString(r *reader) (s string, err error) {
+var quotedReplacer = strings.NewReplacer(`\/`, `/`, "\n", `\n`)
 
-	s, err = readQuotedStringInner(r)
+func readQuotedString(r *reader) (string, error) {
+
+	s, err := readQuotedStringInner(r)
 	if err != nil {
-		return
+		return s, err
 	}
 
-	s = strings.ReplaceAll(s, "\\/", "/")
-	s = strings.ReplaceAll(s, "\n", "\\n")
-	s, err = strconv.Unquote(`"` + s + `"`)
-	return
+	return strconv.Unquote(`"` + quotedReplacer.Replace(s) + `"`)
 }
 
 func readQuotedStringInner(r *reader) (string, error) {
