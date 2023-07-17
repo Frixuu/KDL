@@ -1,6 +1,7 @@
 package kdl
 
 import (
+	"bufio"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -150,4 +151,14 @@ func writeDocument(w *writer, d *Document) error {
 	}
 
 	return nil
+}
+
+func (d *Document) WriteString() (string, error) {
+	var s strings.Builder
+	w := writer{writer: bufio.NewWriter(&s)}
+	err := writeDocument(&w, d)
+	if err != nil {
+		return "", err
+	}
+	return s.String(), nil
 }

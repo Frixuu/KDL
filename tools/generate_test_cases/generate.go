@@ -74,8 +74,16 @@ import (
 			w.WriteString("\t_, err := ParseString(input)\n")
 			w.WriteString("\tassert.Error(t, err)\n")
 		} else {
-			w.WriteString("\t_, err := ParseString(input)\n")
+			w.WriteString("\tdoc, err := ParseString(input)\n")
 			w.WriteString("\tassert.NoError(t, err)\n")
+			output, err := os.ReadFile(outputPath)
+			panicOnError(err)
+			w.WriteString("\toutput := `")
+			w.Write(output)
+			w.WriteString("`\n")
+			w.WriteString("\twritten, err := doc.WriteString()\n")
+			w.WriteString("\tassert.NoError(t, err)\n")
+			w.WriteString("\tassert.Equal(t, output, written)\n")
 		}
 
 		w.WriteString("}\n")
