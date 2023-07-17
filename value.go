@@ -1,10 +1,13 @@
 package kdl
 
 import (
+	"errors"
 	"math/big"
 )
 
 type TypeTag int
+
+var ErrInvalidTypeTag = errors.New("value has invalid KDL type tag")
 
 const (
 	TypeInvalid TypeTag = iota
@@ -13,10 +16,6 @@ const (
 	TypeBool
 	TypeNumber
 	TypeString
-
-	TypeDocument
-	TypeDefault
-	TypeObjects
 )
 
 type Value struct {

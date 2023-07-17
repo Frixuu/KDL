@@ -111,7 +111,9 @@ func readArgOrProp(r *reader, dest *Node) error {
 		}
 		ch, err = r.peek()
 		if err == nil || errors.Is(err, io.EOF) || ch == ';' || ch == '}' || isWhitespace(ch) {
-			dest.AddArg(NewNumberValue(num, typeHint))
+			if !slashdash {
+				dest.AddArg(NewNumberValue(num, typeHint))
+			}
 			return nil
 		} else if ch == '=' {
 			return ErrPropertyKeyIsNumber
@@ -130,7 +132,10 @@ func readArgOrProp(r *reader, dest *Node) error {
 					return nil
 				}
 				arg := string(name)
-				dest.AddArg(NewStringValue(arg, ""))
+				r.discard(length - 1)
+				if !slashdash {
+					dest.AddArg(NewStringValue(arg, ""))
+				}
 				return nil
 			}
 			return err
@@ -150,6 +155,8 @@ func readIdentifier(r *reader) (Identifier, error) {
 		s, err := readQuotedString(r)
 		return Identifier(s), err
 	}
+
+	// TODO read bare identifier
 
 	return "", ErrInvalidSyntax
 }
