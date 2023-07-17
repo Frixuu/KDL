@@ -3,6 +3,7 @@ package kdl
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -111,4 +112,29 @@ func TestReadsNumberBinary(t *testing.T) {
 	reader := readerFromString("0b1 -0b1000_0001")
 	expectNumber(t, reader, 1.0)
 	expectNumber(t, reader, -129.0)
+}
+
+func TestReadsTypeHint(t *testing.T) {
+
+	reader := readerFromString("(foo)")
+	hint, err := readTypeHint(reader)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "foo", hint)
+
+	reader = readerFromString("(bar baz)")
+	_, err = readTypeHint(reader)
+	assert.ErrorIs(t, err, ErrInvalidSyntax)
+
+	reader = readerFromString("(\"hello world\")")
+	hint, err = readTypeHint(reader)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "hello world", hint)
+
+	reader = readerFromString(`("hello\")`)
+	_, err = readTypeHint(reader)
+	assert.ErrorIs(t, err, io.EOF)
+
+	reader = readerFromString("(aaaaa")
+	_, err = readTypeHint(reader)
+	assert.ErrorIs(t, err, io.EOF)
 }

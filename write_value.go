@@ -18,9 +18,9 @@ func writeString(w *writer, s string) error {
 }
 
 func writeBool(w *writer, b bool) error {
-	v := falseBytes
+	v := bytesFalse[:]
 	if b {
-		v = trueBytes
+		v = bytesTrue[:]
 	}
 	_, err := w.writer.Write(v)
 	return err
@@ -32,7 +32,7 @@ func writeNumber(w *writer, f *big.Float) error {
 }
 
 func writeNull(w *writer) error {
-	_, err := w.writer.Write(nullBytes)
+	_, err := w.writer.Write(bytesNull[:])
 	return err
 }
 

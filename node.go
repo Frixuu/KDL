@@ -12,11 +12,8 @@ type Node struct {
 // NewNode creates a new KDL node.
 func NewNode(name string) Node {
 	return Node{
-		Name:     Identifier(name),
-		Args:     make([]Value, 0),
-		Props:    make(map[Identifier]Value),
-		Children: make([]Node, 0),
-		TypeHint: Identifier(""),
+		Name:  Identifier(name),
+		Props: make(map[Identifier]Value),
 	}
 }
 

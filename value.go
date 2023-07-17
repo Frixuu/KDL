@@ -29,8 +29,8 @@ func NewNullValue() Value {
 	return Value{Type: TypeNull}
 }
 
-func NewBoolValue(v bool, hint string) Value {
-	return Value{Type: TypeBool, RawValue: v, TypeHint: Identifier(hint)}
+func NewBoolValue(v bool, hint Identifier) Value {
+	return Value{Type: TypeBool, RawValue: v, TypeHint: hint}
 }
 
 func (v *Value) AsBool() bool {
@@ -40,8 +40,8 @@ func (v *Value) AsBool() bool {
 	return v.RawValue.(bool)
 }
 
-func NewNumberValue(v *big.Float, hint string) Value {
-	return Value{Type: TypeNumber, RawValue: v, TypeHint: Identifier(hint)}
+func NewNumberValue(v *big.Float, hint Identifier) Value {
+	return Value{Type: TypeNumber, RawValue: v, TypeHint: hint}
 }
 
 func (v *Value) AsNumber() *big.Float {
@@ -51,8 +51,8 @@ func (v *Value) AsNumber() *big.Float {
 	return v.RawValue.(*big.Float)
 }
 
-func NewStringValue(v string, hint string) Value {
-	return Value{Type: TypeString, RawValue: v, TypeHint: Identifier(hint)}
+func NewStringValue(v string, hint Identifier) Value {
+	return Value{Type: TypeString, RawValue: v, TypeHint: hint}
 }
 
 func (v *Value) AsString() string {

@@ -148,8 +148,8 @@ func readRawString(r *reader) (string, error) {
 	}
 }
 
-var trueBytes = []byte{'t', 'r', 'u', 'e'}
-var falseBytes = []byte{'f', 'a', 'l', 's', 'e'}
+var bytesTrue = [...]byte{'t', 'r', 'u', 'e'}
+var bytesFalse = [...]byte{'f', 'a', 'l', 's', 'e'}
 var ErrExpectedBool = fmt.Errorf("%w: expected boolean", ErrInvalidSyntax)
 
 func readBool(r *reader) (bool, error) {
@@ -163,9 +163,9 @@ func readBool(r *reader) (bool, error) {
 
 	switch start {
 	case 't':
-		expected = trueBytes
+		expected = bytesTrue[:]
 	case 'f':
-		expected = falseBytes
+		expected = bytesFalse[:]
 	default:
 		return false, ErrInvalidSyntax
 	}
@@ -182,12 +182,12 @@ func readBool(r *reader) (bool, error) {
 	return false, ErrExpectedBool
 }
 
-var nullBytes = []byte{'n', 'u', 'l', 'l'}
+var bytesNull = [...]byte{'n', 'u', 'l', 'l'}
 var ErrExpectedNull = fmt.Errorf("%w: expected null", ErrInvalidSyntax)
 
 func readNull(r *reader) error {
 
-	next, err := r.isNext(nullBytes)
+	next, err := r.isNext(bytesNull[:])
 	if err != nil {
 		return err
 	}
@@ -302,4 +302,60 @@ func readNumber(r *reader) (*big.Float, error) {
 
 	val, err := strconv.ParseInt(str, base, 64)
 	return new(big.Float).SetInt64(val), err
+}
+
+func readTypeHint(r *reader) (Identifier, error) {
+
+	ch, err := r.peek()
+	if err != nil {
+		return "", err
+	}
+
+	if ch != '(' {
+		return "", nil
+	}
+
+	r.discard(1)
+
+	ch, err = r.peek()
+	if err != nil {
+		return "", err
+	}
+
+	if ch == '"' {
+		qs, err := readQuotedString(r)
+		if err != nil {
+			return "", err
+		}
+		ch, err := r.peek()
+		if err != nil {
+			return "", err
+		}
+		if ch == ')' {
+			r.discard(1)
+			return Identifier(qs), nil
+		} else {
+			return "", ErrInvalidSyntax
+		}
+	}
+
+	length := 1
+	for {
+		id, err := r.peekN(length)
+		if err != nil {
+			return "", err
+		}
+
+		if id[len(id)-1] == ')' {
+			s := string(id[:len(id)-1])
+			if isAllowedBareIdentifier(s) {
+				r.discard(1)
+				return Identifier(s), nil
+			} else {
+				return "", ErrInvalidBareIdentifier
+			}
+		}
+
+		length++
+	}
 }
