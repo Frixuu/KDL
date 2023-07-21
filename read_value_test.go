@@ -141,54 +141,57 @@ func TestReadsNumberBinary(t *testing.T) {
 
 func TestReadsBareIdentifier(t *testing.T) {
 
+	var errInvalidInitial *errInvalidInitialCharInBareIdent
+	var errInvalidIdent *errInvalidBareIdent
+
 	reader := readerFromString("abc")
-	id, err := readBareIdentifier(reader, false)
+	id, err := readBareIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "abc", id)
 
 	reader = readerFromString("def ")
-	id, err = readBareIdentifier(reader, false)
+	id, err = readBareIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "def", id)
 
 	reader = readerFromString("012")
-	_, err = readBareIdentifier(reader, false)
-	assert.ErrorIs(t, err, ErrInvalidBareIdentifier)
+	_, err = readBareIdentifier(reader, stopModeFreestanding)
+	assert.ErrorAs(t, err, &errInvalidInitial)
 
 	reader = readerFromString("-cool")
-	id, err = readBareIdentifier(reader, false)
+	id, err = readBareIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "-cool", id)
 
 	reader = readerFromString("-12")
-	_, err = readBareIdentifier(reader, false)
-	assert.ErrorIs(t, err, ErrInvalidBareIdentifier)
+	_, err = readBareIdentifier(reader, stopModeFreestanding)
+	assert.ErrorAs(t, err, &errInvalidIdent)
 
 	reader = readerFromString(`" `)
-	_, err = readBareIdentifier(reader, false)
-	assert.ErrorIs(t, err, ErrInvalidBareIdentifier)
+	_, err = readBareIdentifier(reader, stopModeFreestanding)
+	assert.ErrorAs(t, err, &errInvalidInitial)
 }
 
 func TestReadsIdentifier(t *testing.T) {
 
 	reader := readerFromString(`foo "bar baz" radio r#"gaga"#`)
 
-	ident, err, _ := readIdentifier(reader, false)
+	ident, err, _ := readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", ident)
 
 	_ = readUntilSignificant(reader)
-	ident, err, _ = readIdentifier(reader, false)
+	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "bar baz", ident)
 
 	_ = readUntilSignificant(reader)
-	ident, err, _ = readIdentifier(reader, false)
+	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "radio", ident)
 
 	_ = readUntilSignificant(reader)
-	ident, err, _ = readIdentifier(reader, false)
+	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "gaga", ident)
 }

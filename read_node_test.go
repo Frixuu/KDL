@@ -36,3 +36,17 @@ func TestReadsSimpleNode(t *testing.T) {
 	_, err = readNode(reader)
 	assert.ErrorIs(t, err, io.EOF)
 }
+
+func TestReadsNodeWithChildren(t *testing.T) {
+
+	reader := readerFromString(`repo type="git" {
+	/-mirror "foo"
+	mirror "bar"; mirror "baz"
+}`)
+
+	n, err := readNode(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, "git", n.Props["type"].RawValue)
+	assert.Equal(t, 2, len(n.Children))
+	assert.Equal(t, "baz", n.Children[1].Args[0].AsString())
+}

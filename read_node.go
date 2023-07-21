@@ -6,11 +6,68 @@ import (
 	"io"
 )
 
-func readNodes(r *reader) ([]Node, error) {
-	r.depth++
-	// TODO
-	r.depth--
-	return []Node{}, nil
+var errUnexpectedSemicolon = fmt.Errorf("%w: unexpected ';' not terminating a node", ErrInvalidSyntax)
+var errUnexpectedRightBracket = fmt.Errorf("%w: unexpected top-level '}'", ErrInvalidSyntax)
+
+func readNodes(r *reader) (nodes []Node, err error) {
+
+	nodes = make([]Node, 0, 4)
+
+	for {
+		for {
+			err = readUntilSignificant(r)
+			if err != nil {
+				if errors.Is(err, io.EOF) && r.depth == 0 {
+					err = nil
+				}
+				return
+			}
+
+			var ch rune
+			ch, err = r.peekRune()
+			if err != nil {
+				return
+			}
+
+			if !isNewLine(ch) {
+				if ch == ';' {
+					err = errUnexpectedSemicolon
+					return
+				} else if ch == '}' {
+					if r.depth == 0 {
+						err = errUnexpectedRightBracket
+					}
+					return
+				}
+				break
+			}
+
+			err = skipUntilNewLine(r, true)
+			if err != nil {
+				return
+			}
+		}
+
+		// A "slashdash" comment silences the whole node
+		var slashdash bool
+		slashdash, err = r.isNext(charsSlashDash[:])
+		if err != nil {
+			return
+		}
+		if slashdash {
+			r.discardBytes(2)
+		}
+
+		var node Node
+		node, err = readNode(r)
+		if err != nil {
+			return
+		}
+
+		if !slashdash {
+			nodes = append(nodes, node)
+		}
+	}
 }
 
 func readNode(r *reader) (Node, error) {
@@ -23,7 +80,7 @@ func readNode(r *reader) (Node, error) {
 	}
 	node.TypeHint = hint
 
-	name, err, _ := readIdentifier(r, false)
+	name, err, _ := readIdentifier(r, stopModeFreestanding)
 	if err != nil {
 		return node, err
 	}
@@ -58,10 +115,12 @@ func readNode(r *reader) (Node, error) {
 			return node, nil
 		} else if ch == '{' {
 			r.discardBytes(1)
+			r.depth++
 			children, err := readNodes(r)
 			if err != nil {
 				return node, err
 			}
+			r.depth--
 			for i := range children {
 				node.AddChild(children[i])
 			}
@@ -96,8 +155,9 @@ func readArgOrProp(r *reader, dest *Node) error {
 		return err
 	}
 
+	// This can only be a property if there is no type hint at this time
 	if hint == "" {
-		i, err, quoted := readIdentifier(r, false)
+		i, err, quoted := readIdentifier(r, stopModeEquals)
 		if err == nil {
 			// Identifier read successfully.
 			ch, err := r.peekRune()
@@ -128,12 +188,10 @@ func readArgOrProp(r *reader, dest *Node) error {
 						dest.SetProp(i, v)
 					}
 					return nil
-				} else {
-					return errUnexpectedTokenAfterIdentifier
 				}
-			} else {
-				return err
+				return errUnexpectedTokenAfterIdentifier
 			}
+			return err
 		}
 
 		// Else: Bad identifier. This should be a Value instead. Fallthrough.

@@ -320,9 +320,63 @@ func readNumber(r *reader) (*big.Float, error) {
 	return new(big.Float).SetInt64(val), err
 }
 
-var ErrInvalidBareIdentifier = fmt.Errorf("%w: not a valid bare identifier", ErrInvalidSyntax)
+type errInvalidBareIdent struct {
+	ident string
+}
 
-func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
+func (e *errInvalidBareIdent) Error() string {
+	return fmt.Sprintf(
+		"%s: \"%s\" is not a valid bare identifier",
+		ErrInvalidSyntax.Error(),
+		e.ident,
+	)
+}
+
+func (e *errInvalidBareIdent) Unwrap() error {
+	return ErrInvalidSyntax
+}
+
+type errInvalidCharInBareIdent struct {
+	ch rune
+}
+
+func (e *errInvalidCharInBareIdent) Error() string {
+	return fmt.Sprintf(
+		"%s: '%s' is not a valid character in a bare identifier",
+		ErrInvalidSyntax.Error(),
+		string(e.ch),
+	)
+}
+
+func (e *errInvalidCharInBareIdent) Unwrap() error {
+	return ErrInvalidSyntax
+}
+
+type errInvalidInitialCharInBareIdent struct {
+	ch rune
+}
+
+func (e *errInvalidInitialCharInBareIdent) Error() string {
+	return fmt.Sprintf(
+		"%s: '%s' is not a valid initial character for a bare identifier",
+		ErrInvalidSyntax.Error(),
+		string(e.ch),
+	)
+}
+
+func (e *errInvalidInitialCharInBareIdent) Unwrap() error {
+	return ErrInvalidSyntax
+}
+
+type identStopMode int
+
+const (
+	stopModeFreestanding identStopMode = iota
+	stopModeCloseParen
+	stopModeEquals
+)
+
+func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 
 	ch, err := r.peekRune()
 	if err != nil {
@@ -330,7 +384,7 @@ func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 	}
 
 	if !isAllowedInitialCharacter(ch) {
-		return "", ErrInvalidBareIdentifier
+		return "", &errInvalidInitialCharInBareIdent{ch: ch}
 	}
 
 	chars := make([]rune, 0, 16)
@@ -351,11 +405,13 @@ func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 			break
 		}
 
-		if !isRuneAllowedInBareIdentifier(rune(ch)) {
-			if stopOnCloseParen && ch == ')' {
+		if !isRuneAllowedInBareIdentifier(ch) {
+			if stopMode == stopModeCloseParen && ch == ')' {
+				break
+			} else if stopMode == stopModeEquals && ch == '=' {
 				break
 			}
-			return "", ErrInvalidBareIdentifier
+			return "", &errInvalidCharInBareIdent{ch: ch}
 		}
 
 		_, _ = r.readRune()
@@ -365,31 +421,13 @@ func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 	ident := string(chars)
 	// Validate, could still be a keyword
 	if !isAllowedBareIdentifier(ident) {
-		return "", ErrInvalidBareIdentifier
+		return "", &errInvalidBareIdent{ident: ident}
 	}
 
 	return Identifier(ident), nil
 }
 
-var ErrInvalidIdentifier = fmt.Errorf("%w: not a valid identifier", ErrInvalidSyntax)
-
-type ErrInvalidInitialCharacter struct {
-	Token rune
-}
-
-func (e *ErrInvalidInitialCharacter) Error() string {
-	return fmt.Sprintf(
-		"%s: '%s' is not a valid initial character for a bare identifier",
-		ErrInvalidSyntax.Error(),
-		string(e.Token),
-	)
-}
-
-func (e *ErrInvalidInitialCharacter) Unwrap() error {
-	return ErrInvalidSyntax
-}
-
-func readIdentifier(r *reader, stopOnCloseParen bool) (i Identifier, err error, quoted bool) {
+func readIdentifier(r *reader, stopMode identStopMode) (i Identifier, err error, quoted bool) {
 
 	i = ""
 
@@ -411,7 +449,7 @@ func readIdentifier(r *reader, stopOnCloseParen bool) (i Identifier, err error, 
 	if ch == 'r' {
 		s, err = readRawString(r)
 		if err != nil {
-			i, err = readBareIdentifier(r, stopOnCloseParen)
+			i, err = readBareIdentifier(r, stopMode)
 			return
 		}
 
@@ -421,9 +459,9 @@ func readIdentifier(r *reader, stopOnCloseParen bool) (i Identifier, err error, 
 	}
 
 	if isAllowedInitialCharacter(ch) {
-		i, err = readBareIdentifier(r, stopOnCloseParen)
+		i, err = readBareIdentifier(r, stopMode)
 	} else {
-		err = &ErrInvalidInitialCharacter{Token: ch}
+		err = &errInvalidInitialCharInBareIdent{ch: ch}
 	}
 
 	return
@@ -444,7 +482,7 @@ func readMaybeTypeHint(r *reader) (Identifier, error) {
 
 	r.discardBytes(1)
 
-	id, err, _ := readIdentifier(r, true)
+	id, err, _ := readIdentifier(r, stopModeCloseParen)
 	if err != nil {
 		return "", err
 	}
