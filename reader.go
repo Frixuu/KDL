@@ -37,6 +37,12 @@ func (r *reader) lastRead() rune {
 	return r.current
 }
 
+func (r *reader) discardRunes(count int) {
+	for i := 1; i < count; i++ {
+		_, _ = r.readRune()
+	}
+}
+
 func (r *reader) discardBytes(count int) {
 	s, _ := r.peekBytes(count)
 	for _, b := range s {

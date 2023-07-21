@@ -24,8 +24,8 @@ type Value struct {
 	RawValue interface{}
 }
 
-func NewNullValue() Value {
-	return Value{Type: TypeNull}
+func NewNullValue(hint Identifier) Value {
+	return Value{Type: TypeNull, TypeHint: hint}
 }
 
 func NewBoolValue(v bool, hint Identifier) Value {
@@ -59,4 +59,8 @@ func (v *Value) AsString() string {
 		panic("value is not a string")
 	}
 	return v.RawValue.(string)
+}
+
+func newInvalidValue() Value {
+	return Value{Type: TypeInvalid}
 }

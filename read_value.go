@@ -70,63 +70,77 @@ func readQuotedStringInner(r *reader) (string, error) {
 	}
 }
 
+var errExpectedRawString = fmt.Errorf("%w: expected raw string", ErrInvalidSyntax)
+
 func readRawString(r *reader) (string, error) {
 
+	ch, err := r.peekRune()
+	if err != nil {
+		return "", err
+	}
+
+	// A raw string must start with an 'r'
+	if ch != 'r' {
+		return "", errExpectedRawString
+	}
+
+	// followed by 0 or more '#' characters
 	leadingPoundCount := 0
-	length := 0
+	length := 2
 
 	for {
-
-		length++
 
 		bytes, err := r.peekBytes(length)
 		if err != nil {
 			return "", err
 		}
 
-		ch := rune(bytes[len(bytes)-1])
+		ch := bytes[len(bytes)-1]
 		if ch == '#' {
 			leadingPoundCount++
-			continue
+			length++
 		} else if ch == '"' {
+			// and a doublequote.
 			break
 		} else {
-			return "", ErrInvalidSyntax
+			return "", errExpectedRawString
 		}
 	}
 
-	start := length
-	length++
+	// The string proper starts now
+	contentStart := length
 	closingPoundCount := 0
-	dqStart := false
+	isJustAfterDoublequotes := false
+	var bytes []byte
 
 	for {
 
-		bytes, err := r.peekBytes(length)
+		if isJustAfterDoublequotes && leadingPoundCount == closingPoundCount {
+			r.discardBytes(length)
+			return string(bytes[contentStart : len(bytes)-leadingPoundCount-1]), nil
+		}
+
+		length++
+		bytes, err = r.peekBytes(length)
 		if err != nil {
 			return "", err
 		}
 
-		ch := rune(bytes[len(bytes)-1])
+		ch := bytes[len(bytes)-1]
 		if ch == '"' {
-			dqStart = true
-			length++
+			// The contents of the string may have possibly ended.
+			// To return, we must now read the exact number of '#' characters
+			// that we started the raw string with
+			isJustAfterDoublequotes = true
 			continue
 		}
 
-		if dqStart && ch == '#' {
+		if isJustAfterDoublequotes && ch == '#' {
 			closingPoundCount++
 		} else {
 			closingPoundCount = 0
-			dqStart = false
+			isJustAfterDoublequotes = false
 		}
-
-		if closingPoundCount == leadingPoundCount {
-			r.discardBytes(length)
-			return string(bytes[start : len(bytes)-leadingPoundCount-1]), nil
-		}
-
-		length++
 	}
 }
 
@@ -142,7 +156,6 @@ func readString(r *reader) (string, error) {
 	case '"':
 		return readQuotedString(r)
 	case 'r':
-		r.discardBytes(1)
 		return readRawString(r)
 	default:
 		return "", ErrExpectedString
@@ -372,28 +385,11 @@ func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 
 	// r could mean a raw string or a bare ident, more checks are necessary
 	if ch == 'r' {
-		s, err := r.peekBytes(2)
+		s, err := readRawString(r)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				r.discardBytes(1)
-				return "r", nil
-			}
-			return "", nil
-		}
-
-		switch s[1] {
-		case '"':
-			r.discardBytes(1)
-			s, err := readRawString(r)
-			return Identifier(s), err
-		case '#':
-			// TODO Still no idea, but assume it's a raw string for now
-			r.discardBytes(1)
-			s, err := readRawString(r)
-			return Identifier(s), err
-		default:
 			return readBareIdentifier(r, stopOnCloseParen)
 		}
+		return Identifier(s), err
 	}
 
 	if isAllowedInitialCharacter(ch) {
@@ -403,7 +399,7 @@ func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 	return "", ErrInvalidInitialCharacter
 }
 
-func readTypeHint(r *reader) (Identifier, error) {
+func readMaybeTypeHint(r *reader) (Identifier, error) {
 
 	ch, err := r.peekRune()
 	if err != nil {
@@ -432,4 +428,57 @@ func readTypeHint(r *reader) (Identifier, error) {
 	}
 
 	return "", ErrInvalidSyntax
+}
+
+func readValue(r *reader) (Value, error) {
+
+	hint, err := readMaybeTypeHint(r)
+	if err != nil {
+		return newInvalidValue(), err
+	}
+
+	ch, err := r.peekRune()
+	if err != nil {
+		return newInvalidValue(), err
+	}
+
+	if unicode.IsDigit(ch) {
+		v, err := readNumber(r)
+		if err != nil {
+			return newInvalidValue(), err
+		}
+		return NewNumberValue(v, hint), nil
+	}
+
+	switch ch {
+	case '"':
+		v, err := readQuotedString(r)
+		if err != nil {
+			return newInvalidValue(), err
+		}
+		return NewStringValue(v, hint), nil
+	case 't', 'f':
+		v, err := readBool(r)
+		if err != nil {
+			return newInvalidValue(), err
+		}
+		return NewBoolValue(v, hint), nil
+	case '-', '+':
+		v, err := readNumber(r)
+		if err != nil {
+			return newInvalidValue(), err
+		}
+		return NewNumberValue(v, hint), nil
+	case 'r':
+		v, err := readRawString(r)
+		if err != nil {
+			return newInvalidValue(), err
+		}
+		return NewStringValue(v, hint), nil
+	case 'n':
+		err := readNull(r)
+		return NewNullValue(hint), err
+	default:
+		return newInvalidValue(), ErrInvalidSyntax
+	}
 }

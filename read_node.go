@@ -19,7 +19,7 @@ func readNode(r *reader) (Node, error) {
 
 	ch, err := r.peekRune()
 	if ch == '(' && err != nil {
-		hint, err := readTypeHint(r)
+		hint, err := readMaybeTypeHint(r)
 		if err != nil {
 			return node, err
 		}
@@ -52,7 +52,7 @@ func readNode(r *reader) (Node, error) {
 		}
 
 		if isNewLine(ch) {
-			r.discardBytes(1)
+			r.discardRunes(1)
 			return node, nil
 		} else if ch == ';' {
 			r.discardBytes(1)
@@ -90,7 +90,7 @@ func readArgOrProp(r *reader, dest *Node) error {
 		return err
 	}
 	if slashdash {
-		r.discardBytes(len(charsSlashDash))
+		r.discardBytes(2)
 	}
 
 	ch, err := r.peekRune()
@@ -99,7 +99,7 @@ func readArgOrProp(r *reader, dest *Node) error {
 	}
 
 	// Values (NOT property keys) can be prepended by an additional type hint
-	typeHint, err := readTypeHint(r)
+	typeHint, err := readMaybeTypeHint(r)
 	if err != nil {
 		return err
 	}

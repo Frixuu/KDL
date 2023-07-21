@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,27 +37,37 @@ func TestReadsQuotedString(t *testing.T) {
 
 func TestReadsRawString(t *testing.T) {
 
-	reader := readerFromString(`###"oh
+	reader := readerFromString(`r###"oh
 	Hi"##there##!
-"### extra data`)
+"###r"extra data`)
 
 	s, err := readRawString(reader)
 	assert.NoError(t, err)
 	assert.Equal(t, "oh\n\tHi\"##there##!\n", s)
 
 	_, err = readRawString(reader)
-	assert.ErrorIs(t, err, ErrInvalidSyntax)
+	assert.ErrorIs(t, err, io.EOF)
+
+	reader = readerFromString(`r#"one pound"#`)
+	s, err = readRawString(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, "one pound", s)
+
+	reader = readerFromString(`r"no pounds"`)
+	s, err = readRawString(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, "no pounds", s)
+
 }
 
 func TestReadsString(t *testing.T) {
 
-	reader := readerFromString(`r##"foo"## "bar"`)
+	reader := readerFromString(`r##"foo"##"bar"`)
 
 	s, err := readString(reader)
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", s)
 
-	_ = readUntilSignificant(reader)
 	s, err = readString(reader)
 	assert.NoError(t, err)
 	assert.Equal(t, "bar", s)
@@ -185,24 +196,53 @@ func TestReadsIdentifier(t *testing.T) {
 func TestReadsTypeHint(t *testing.T) {
 
 	reader := readerFromString("(foo)")
-	hint, err := readTypeHint(reader)
+	hint, err := readMaybeTypeHint(reader)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", hint)
 
 	reader = readerFromString("(bar baz)")
-	_, err = readTypeHint(reader)
+	_, err = readMaybeTypeHint(reader)
 	assert.ErrorIs(t, err, ErrInvalidSyntax)
 
 	reader = readerFromString("(\"hello world\")")
-	hint, err = readTypeHint(reader)
+	hint, err = readMaybeTypeHint(reader)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "hello world", hint)
 
 	reader = readerFromString(`("hello\")`)
-	_, err = readTypeHint(reader)
+	_, err = readMaybeTypeHint(reader)
 	assert.ErrorIs(t, err, io.EOF)
 
 	reader = readerFromString("(aaaaa")
-	_, err = readTypeHint(reader)
+	_, err = readMaybeTypeHint(reader)
 	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestReadsValue(t *testing.T) {
+
+	reader := readerFromString(`true (temp)-3.5 ("hey")null "foo" what`)
+
+	value, err := readValue(reader)
+	assert.NoError(t, err)
+	assert.EqualValues(t, NewBoolValue(true, ""), value)
+
+	_ = readUntilSignificant(reader)
+	value, err = readValue(reader)
+	assert.NoError(t, err)
+	// different rounding mode
+	assert.EqualExportedValues(t, NewNumberValue(big.NewFloat(-3.5), "temp"), value)
+
+	_ = readUntilSignificant(reader)
+	value, err = readValue(reader)
+	assert.NoError(t, err)
+	assert.EqualValues(t, NewNullValue("hey"), value)
+
+	_ = readUntilSignificant(reader)
+	value, err = readValue(reader)
+	assert.NoError(t, err)
+	assert.EqualValues(t, NewStringValue("foo", ""), value)
+
+	_ = readUntilSignificant(reader)
+	_, err = readValue(reader)
+	assert.Error(t, err)
 }
