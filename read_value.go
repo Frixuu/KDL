@@ -192,7 +192,13 @@ func readBool(r *reader) (bool, error) {
 	}
 
 	if next {
-		return start == 't', nil
+		if start == 't' {
+			r.discardBytes(4)
+			return true, nil
+		} else {
+			r.discardBytes(5)
+			return false, nil
+		}
 	}
 
 	return false, errExpectedBool
@@ -209,6 +215,7 @@ func readNull(r *reader) error {
 	}
 
 	if next {
+		r.discardBytes(4)
 		return nil
 	}
 
@@ -374,6 +381,7 @@ const (
 	stopModeFreestanding identStopMode = iota
 	stopModeCloseParen
 	stopModeEquals
+	stopModeSemicolon
 )
 
 func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
@@ -409,6 +417,8 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 			if stopMode == stopModeCloseParen && ch == ')' {
 				break
 			} else if stopMode == stopModeEquals && ch == '=' {
+				break
+			} else if stopMode == stopModeSemicolon && ch == ';' {
 				break
 			}
 			return "", &errInvalidCharInBareIdent{ch: ch}

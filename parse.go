@@ -15,7 +15,7 @@ func ParseBufReader(br *bufio.Reader) (Document, error) {
 
 	nodes, err := readNodes(r)
 	if err != nil {
-		return doc, err
+		return doc, addErrPosInfo(err, r)
 	}
 
 	doc.Nodes = nodes

@@ -6,8 +6,9 @@ import (
 )
 
 var (
-	ErrInvalidSyntax   = errors.New("invalid syntax")
-	ErrInvalidNumValue = fmt.Errorf("%w: bad numeric value", ErrInvalidSyntax)
+	ErrInvalidSyntax       = errors.New("invalid syntax")
+	ErrInvalidNumValue     = fmt.Errorf("%w: bad numeric value", ErrInvalidSyntax)
+	ErrUnexpectedSlashdash = fmt.Errorf("%w: unexpected slashdash", ErrInvalidSyntax)
 )
 
 // ErrWithPosition wraps an error,

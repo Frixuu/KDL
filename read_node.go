@@ -81,7 +81,7 @@ func readNode(r *reader) (Node, error) {
 	}
 	node.TypeHint = hint
 
-	name, err, _ := readIdentifier(r, stopModeFreestanding)
+	name, err, _ := readIdentifier(r, stopModeSemicolon)
 	if err != nil {
 		return node, err
 	}
@@ -98,21 +98,40 @@ func readNode(r *reader) (Node, error) {
 			return node, err
 		}
 
-		ch, err := r.peekRune()
+		slashdash, err := r.isNext(charsSlashDash[:])
+		if slashdash && err == nil {
+			r.discardBytes(2)
+		}
+
+		err = readUntilSignificant(r)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return node, nil
+				return node, ErrUnexpectedSlashdash
 			}
+			return node, err
+		}
+
+		ch, err := r.peekRune()
+		if err != nil {
 			return node, err
 		}
 
 		if isNewLine(ch) {
 			r.discardRunes(1)
+			if slashdash {
+				return node, ErrUnexpectedSlashdash
+			}
 			return node, nil
 		} else if ch == ';' {
 			r.discardBytes(1)
+			if slashdash {
+				return node, ErrUnexpectedSlashdash
+			}
 			return node, nil
 		} else if ch == '}' {
+			if slashdash {
+				return node, ErrUnexpectedSlashdash
+			}
 			return node, nil
 		} else if ch == '{' {
 			r.discardBytes(1)
@@ -122,12 +141,14 @@ func readNode(r *reader) (Node, error) {
 				return node, err
 			}
 			r.depth--
-			for i := range children {
-				node.AddChild(children[i])
+			if !slashdash {
+				for i := range children {
+					node.AddChild(children[i])
+				}
 			}
 			return node, nil
 		} else {
-			err = readArgOrProp(r, &node)
+			err = readArgOrProp(r, &node, slashdash)
 			if err != nil {
 				return node, err
 			}
@@ -136,21 +157,27 @@ func readNode(r *reader) (Node, error) {
 }
 
 var errUnexpectedBareIdentifier = fmt.Errorf("%w: unexpected bare identifier", ErrInvalidSyntax)
-var errUnexpectedTokenAfterIdentifier = fmt.Errorf("%w: unexpected token after identifier", ErrInvalidSyntax)
 var errUnexpectedTokenAfterValue = fmt.Errorf("%w: unexpected token after value", ErrInvalidSyntax)
+
+type errUnexpectedTokenAfterIdentifier struct {
+	ch rune
+}
+
+func (e *errUnexpectedTokenAfterIdentifier) Error() string {
+	return fmt.Sprintf(
+		"%s: unexpected token '%s' after identifier",
+		ErrInvalidSyntax.Error(),
+		string(e.ch),
+	)
+}
+
+func (e *errUnexpectedTokenAfterIdentifier) Unwrap() error {
+	return ErrInvalidSyntax
+}
 
 // readArgOrProp reads an argument or a property
 // and adds them to the provided Node definition.
-func readArgOrProp(r *reader, dest *Node) error {
-
-	// A "slashdash" comment silences the whole argument or property
-	slashdash, err := r.isNext(charsSlashDash[:])
-	if err != nil {
-		return err
-	}
-	if slashdash {
-		r.discardBytes(2)
-	}
+func readArgOrProp(r *reader, dest *Node, discard bool) error {
 
 	hint, err := readMaybeTypeHint(r)
 	if err != nil {
@@ -165,7 +192,7 @@ func readArgOrProp(r *reader, dest *Node) error {
 			ch, err := r.peekRune()
 			if errors.Is(err, io.EOF) {
 				if quoted {
-					if !slashdash {
+					if !discard {
 						dest.AddArg(NewStringValue(string(i), ""))
 					}
 					return nil
@@ -174,7 +201,7 @@ func readArgOrProp(r *reader, dest *Node) error {
 			} else if err == nil {
 				if isValidValueTerminator(ch) {
 					if quoted {
-						if !slashdash {
+						if !discard {
 							dest.AddArg(NewStringValue(string(i), ""))
 						}
 						return nil
@@ -186,12 +213,12 @@ func readArgOrProp(r *reader, dest *Node) error {
 					if err != nil {
 						return err
 					}
-					if !slashdash {
+					if !discard {
 						dest.SetProp(i, v)
 					}
 					return nil
 				}
-				return errUnexpectedTokenAfterIdentifier
+				return &errUnexpectedTokenAfterIdentifier{ch: ch}
 			}
 			return err
 		}
@@ -211,7 +238,7 @@ func readArgOrProp(r *reader, dest *Node) error {
 		return err
 	}
 	if err == nil || errors.Is(err, io.EOF) || isValidValueTerminator(ch) {
-		if !slashdash {
+		if !discard {
 			dest.AddArg(v)
 		}
 		return nil

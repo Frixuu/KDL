@@ -96,10 +96,5 @@ func (r *reader) isNext(expected []byte) (bool, error) {
 		return false, err
 	}
 
-	if bytes.Equal(next, expected) {
-		r.discardBytes(len(expected))
-		return true, nil
-	}
-
-	return false, nil
+	return bytes.Equal(next, expected), nil
 }

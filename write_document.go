@@ -146,8 +146,10 @@ func writeDocument(w *writer, d *Document) error {
 		if err := writeNode(w, node); err != nil {
 			return err
 		}
-		if err := w.writer.WriteByte('\n'); err != nil {
-			return err
+		if i+1 < len(nodes) {
+			if err := w.writer.WriteByte('\n'); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -159,6 +161,9 @@ func (d *Document) WriteString() (string, error) {
 	w := writer{writer: bufio.NewWriter(&buf)}
 	err := writeDocument(&w, d)
 	if err != nil {
+		return "", err
+	}
+	if err := w.writer.WriteByte('\n'); err != nil {
 		return "", err
 	}
 	w.writer.Flush()
