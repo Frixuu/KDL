@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"unicode"
 )
 
 func readNodes(r *reader) ([]Node, error) {
@@ -15,18 +14,16 @@ func readNodes(r *reader) ([]Node, error) {
 }
 
 func readNode(r *reader) (Node, error) {
+
 	node := NewNode("")
 
-	ch, err := r.peekRune()
-	if ch == '(' && err != nil {
-		hint, err := readMaybeTypeHint(r)
-		if err != nil {
-			return node, err
-		}
-		node.TypeHint = hint
+	hint, err := readMaybeTypeHint(r)
+	if err != nil {
+		return node, err
 	}
+	node.TypeHint = hint
 
-	name, err := readIdentifier(r, false)
+	name, err, _ := readIdentifier(r, false)
 	if err != nil {
 		return node, err
 	}
@@ -77,8 +74,9 @@ func readNode(r *reader) (Node, error) {
 	}
 }
 
-var ErrInvalidPropertyKey = fmt.Errorf("%w: bad property key type", ErrInvalidSyntax)
-var ErrPropertyKeyIsNumber = fmt.Errorf("%w (cannot be a number)", ErrInvalidPropertyKey)
+var errUnexpectedBareIdentifier = fmt.Errorf("%w: unexpected bare identifier", ErrInvalidSyntax)
+var errUnexpectedTokenAfterIdentifier = fmt.Errorf("%w: unexpected token after identifier", ErrInvalidSyntax)
+var errUnexpectedTokenAfterValue = fmt.Errorf("%w: unexpected token after value", ErrInvalidSyntax)
 
 // readArgOrProp reads an argument or a property
 // and adds them to the provided Node definition.
@@ -93,56 +91,73 @@ func readArgOrProp(r *reader, dest *Node) error {
 		r.discardBytes(2)
 	}
 
+	hint, err := readMaybeTypeHint(r)
+	if err != nil {
+		return err
+	}
+
+	if hint == "" {
+		i, err, quoted := readIdentifier(r, false)
+		if err == nil {
+			// Identifier read successfully.
+			ch, err := r.peekRune()
+			if errors.Is(err, io.EOF) {
+				if quoted {
+					if !slashdash {
+						dest.AddArg(NewStringValue(string(i), ""))
+					}
+					return nil
+				}
+				return errUnexpectedBareIdentifier
+			} else if err == nil {
+				if isValidValueTerminator(ch) {
+					if quoted {
+						if !slashdash {
+							dest.AddArg(NewStringValue(string(i), ""))
+						}
+						return nil
+					}
+					return errUnexpectedBareIdentifier
+				} else if ch == '=' {
+					r.discardBytes(1)
+					v, err := readValue(r)
+					if err != nil {
+						return err
+					}
+					if !slashdash {
+						dest.SetProp(i, v)
+					}
+					return nil
+				} else {
+					return errUnexpectedTokenAfterIdentifier
+				}
+			} else {
+				return err
+			}
+		}
+
+		// Else: Bad identifier. This should be a Value instead. Fallthrough.
+	}
+
+	v, err := readValue(r)
+	if err != nil {
+		// Not a valid Value
+		return err
+	}
+	v.TypeHint = hint
+
 	ch, err := r.peekRune()
 	if err != nil {
 		return err
 	}
-
-	// Values (NOT property keys) can be prepended by an additional type hint
-	typeHint, err := readMaybeTypeHint(r)
-	if err != nil {
-		return err
+	if err == nil || errors.Is(err, io.EOF) || isValidValueTerminator(ch) {
+		if !slashdash {
+			dest.AddArg(v)
+		}
+		return nil
 	}
 
-	if unicode.IsDigit(ch) {
-		num, err := readNumber(r)
-		if err != nil {
-			return err
-		}
-		ch, err = r.peekRune()
-		if err == nil || errors.Is(err, io.EOF) || ch == ';' || ch == '}' || isWhitespace(ch) {
-			if !slashdash {
-				dest.AddArg(NewNumberValue(num, typeHint))
-			}
-			return nil
-		} else if ch == '=' {
-			return ErrPropertyKeyIsNumber
-		} else {
-			return ErrInvalidSyntax
-		}
-	}
-
-	length := 1
-	for {
-		name, err := r.peekBytes(length)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				name, err = r.peekBytes(length - 1)
-				if err != nil {
-					return nil
-				}
-				arg := string(name)
-				r.discardBytes(length - 1)
-				if !slashdash {
-					dest.AddArg(NewStringValue(arg, ""))
-				}
-				return nil
-			}
-			return err
-		}
-
-		length++
-	}
+	return errUnexpectedTokenAfterValue
 }
 
 // skipUntilNewLine discards the reader to the next new line character.

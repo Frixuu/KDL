@@ -173,22 +173,22 @@ func TestReadsIdentifier(t *testing.T) {
 
 	reader := readerFromString(`foo "bar baz" radio r#"gaga"#`)
 
-	ident, err := readIdentifier(reader, false)
+	ident, err, _ := readIdentifier(reader, false)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", ident)
 
 	_ = readUntilSignificant(reader)
-	ident, err = readIdentifier(reader, false)
+	ident, err, _ = readIdentifier(reader, false)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "bar baz", ident)
 
 	_ = readUntilSignificant(reader)
-	ident, err = readIdentifier(reader, false)
+	ident, err, _ = readIdentifier(reader, false)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "radio", ident)
 
 	_ = readUntilSignificant(reader)
-	ident, err = readIdentifier(reader, false)
+	ident, err, _ = readIdentifier(reader, false)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "gaga", ident)
 }

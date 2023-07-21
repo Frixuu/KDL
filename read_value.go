@@ -23,6 +23,8 @@ func readQuotedString(r *reader) (string, error) {
 	return strconv.Unquote(`"` + quotedReplacer.Replace(s) + `"`)
 }
 
+var errExpectedQuotedString = fmt.Errorf("%w: expected quoted string", ErrInvalidSyntax)
+
 func readQuotedStringInner(r *reader) (string, error) {
 
 	count := 1
@@ -33,7 +35,7 @@ func readQuotedStringInner(r *reader) (string, error) {
 	}
 
 	if start != '"' {
-		return "", ErrInvalidSyntax
+		return "", errExpectedQuotedString
 	}
 
 	for {
@@ -164,7 +166,7 @@ func readString(r *reader) (string, error) {
 
 var bytesTrue = [...]byte{'t', 'r', 'u', 'e'}
 var bytesFalse = [...]byte{'f', 'a', 'l', 's', 'e'}
-var ErrExpectedBool = fmt.Errorf("%w: expected boolean", ErrInvalidSyntax)
+var errExpectedBool = fmt.Errorf("%w: expected boolean", ErrInvalidSyntax)
 
 func readBool(r *reader) (bool, error) {
 
@@ -181,7 +183,7 @@ func readBool(r *reader) (bool, error) {
 	case 'f':
 		expected = bytesFalse[:]
 	default:
-		return false, ErrInvalidSyntax
+		return false, errExpectedBool
 	}
 
 	next, err := r.isNext(expected)
@@ -193,7 +195,7 @@ func readBool(r *reader) (bool, error) {
 		return start == 't', nil
 	}
 
-	return false, ErrExpectedBool
+	return false, errExpectedBool
 }
 
 var bytesNull = [...]byte{'n', 'u', 'l', 'l'}
@@ -345,7 +347,7 @@ func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 			return "", err
 		}
 
-		if isWhitespace(ch) {
+		if isWhitespace(ch) || isNewLine(ch) {
 			break
 		}
 
@@ -361,7 +363,7 @@ func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 	}
 
 	ident := string(chars)
-	// Sanity check: could be starting with -digit at this point
+	// Validate, could still be a keyword
 	if !isAllowedBareIdentifier(ident) {
 		return "", ErrInvalidBareIdentifier
 	}
@@ -370,34 +372,64 @@ func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 }
 
 var ErrInvalidIdentifier = fmt.Errorf("%w: not a valid identifier", ErrInvalidSyntax)
-var ErrInvalidInitialCharacter = fmt.Errorf("%w: not a valid initial character", ErrInvalidSyntax)
 
-func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
-	ch, err := r.peekRune()
+type ErrInvalidInitialCharacter struct {
+	Token rune
+}
+
+func (e *ErrInvalidInitialCharacter) Error() string {
+	return fmt.Sprintf(
+		"%s: '%s' is not a valid initial character for a bare identifier",
+		ErrInvalidSyntax.Error(),
+		string(e.Token),
+	)
+}
+
+func (e *ErrInvalidInitialCharacter) Unwrap() error {
+	return ErrInvalidSyntax
+}
+
+func readIdentifier(r *reader, stopOnCloseParen bool) (i Identifier, err error, quoted bool) {
+
+	i = ""
+
+	var ch rune
+	ch, err = r.peekRune()
 	if err != nil {
-		return "", err
+		return
 	}
 
+	var s string
 	if ch == '"' {
-		s, err := readQuotedString(r)
-		return Identifier(s), err
+		quoted = true
+		s, err = readQuotedString(r)
+		i = Identifier(s)
+		return
 	}
 
-	// r could mean a raw string or a bare ident, more checks are necessary
+	// r could mean a raw string or a bare ident
 	if ch == 'r' {
-		s, err := readRawString(r)
+		s, err = readRawString(r)
 		if err != nil {
-			return readBareIdentifier(r, stopOnCloseParen)
+			i, err = readBareIdentifier(r, stopOnCloseParen)
+			return
 		}
-		return Identifier(s), err
+
+		quoted = true
+		i = Identifier(s)
+		return
 	}
 
 	if isAllowedInitialCharacter(ch) {
-		return readBareIdentifier(r, stopOnCloseParen)
+		i, err = readBareIdentifier(r, stopOnCloseParen)
+	} else {
+		err = &ErrInvalidInitialCharacter{Token: ch}
 	}
 
-	return "", ErrInvalidInitialCharacter
+	return
 }
+
+var errExpectedCloseHint = fmt.Errorf("%w: expected ) after type hint", ErrInvalidSyntax)
 
 func readMaybeTypeHint(r *reader) (Identifier, error) {
 
@@ -412,7 +444,7 @@ func readMaybeTypeHint(r *reader) (Identifier, error) {
 
 	r.discardBytes(1)
 
-	id, err := readIdentifier(r, true)
+	id, err, _ := readIdentifier(r, true)
 	if err != nil {
 		return "", err
 	}
@@ -424,11 +456,13 @@ func readMaybeTypeHint(r *reader) (Identifier, error) {
 
 	if ch == ')' {
 		r.discardBytes(1)
-		return id, nil
+		return Identifier(id), nil
 	}
 
-	return "", ErrInvalidSyntax
+	return "", errExpectedCloseHint
 }
+
+var errExpectedValue = fmt.Errorf("%w: expected value", ErrInvalidSyntax)
 
 func readValue(r *reader) (Value, error) {
 
@@ -479,6 +513,6 @@ func readValue(r *reader) (Value, error) {
 		err := readNull(r)
 		return NewNullValue(hint), err
 	default:
-		return newInvalidValue(), ErrInvalidSyntax
+		return newInvalidValue(), errExpectedValue
 	}
 }

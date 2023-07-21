@@ -2,26 +2,34 @@ package kdl
 
 import (
 	"io"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestReadsSimpleNode(t *testing.T) {
-	reader := readerFromString("foo bar\n(name)baz quox")
+
+	reader := readerFromString("foo \"bar\" (abc)2\n(name)baz \"quox\"")
 
 	n, err := readNode(reader)
 	assert.NoError(t, err)
-	assert.Equal(t, Node{
-		Name: "foo",
-		Args: []Value{NewStringValue("bar", "")},
+	assert.EqualExportedValues(t, Node{
+		Name:  "foo",
+		Props: map[Identifier]Value{},
+		Args: []Value{
+			NewStringValue("bar", ""),
+			NewNumberValue(big.NewFloat(2.0), "abc"),
+		},
 	}, n)
 
+	_ = skipUntilNewLine(reader, true)
 	n, err = readNode(reader)
 	assert.NoError(t, err)
 	assert.Equal(t, Node{
 		Name:     "baz",
 		TypeHint: "name",
+		Props:    map[Identifier]Value{},
 		Args:     []Value{NewStringValue("quox", "")},
 	}, n)
 

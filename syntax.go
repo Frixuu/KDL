@@ -65,3 +65,7 @@ func isRuneAllowedInBareIdentifier(ch rune) bool {
 func isAllowedInitialCharacter(ch rune) bool {
 	return !unicode.IsDigit(ch) && isRuneAllowedInBareIdentifier(ch)
 }
+
+func isValidValueTerminator(ch rune) bool {
+	return ch == ';' || ch == '}' || isWhitespace(ch) || isNewLine(ch)
+}
