@@ -1,9 +1,7 @@
 package kdl
 
 import (
-	"bufio"
 	"math/big"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,10 +9,7 @@ import (
 
 func TestDocumentWritesCorrectly(t *testing.T) {
 
-	var s strings.Builder
-	w := writer{writer: bufio.NewWriter(&s)}
-
-	err := writeDocument(&w, &Document{
+	s, err := (&Document{
 		Nodes: []Node{
 			{
 				Name: "abc",
@@ -36,13 +31,12 @@ func TestDocumentWritesCorrectly(t *testing.T) {
 				Name: "ghi jkl",
 			},
 		},
-	})
+	}).WriteString()
 
-	w.writer.Flush()
 	assert.NoError(t, err)
 	assert.Equal(t, `abc 2 "foo" {
     def quox=false zoom="voom"
 }
 "ghi jkl"
-`, s.String())
+`, s)
 }

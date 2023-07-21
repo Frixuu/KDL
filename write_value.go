@@ -37,6 +37,12 @@ func writeNull(w *writer) error {
 }
 
 func writeValue(w *writer, v *Value) error {
+
+	err := writeTypeHint(w, v.TypeHint)
+	if err != nil {
+		return err
+	}
+
 	switch v.Type {
 	case TypeString:
 		return writeString(w, v.AsString())
@@ -57,5 +63,25 @@ func writeIdentifier(w *writer, i Identifier) (err error) {
 	} else {
 		err = writeString(w, string(i))
 	}
+	return
+}
+
+func writeTypeHint(w *writer, hint Identifier) (err error) {
+
+	if hint == "" {
+		return nil
+	}
+
+	err = w.writer.WriteByte('(')
+	if err != nil {
+		return
+	}
+
+	err = writeIdentifier(w, hint)
+	if err != nil {
+		return
+	}
+
+	err = w.writer.WriteByte(')')
 	return
 }

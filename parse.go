@@ -3,7 +3,6 @@ package kdl
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"io"
 	"os"
 )
@@ -14,24 +13,12 @@ func ParseBufReader(br *bufio.Reader) (Document, error) {
 	doc := NewDocument()
 	r := wrapReader(br)
 
-	for {
-
-		_, err := r.peekRune()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return doc, err
-		}
-
-		node, err := readNode(r)
-		if err != nil {
-			return doc, err
-		}
-
-		doc.AddNode(node)
+	nodes, err := readNodes(r)
+	if err != nil {
+		return doc, err
 	}
 
+	doc.Nodes = nodes
 	return doc, nil
 }
 

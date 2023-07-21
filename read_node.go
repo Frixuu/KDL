@@ -37,6 +37,7 @@ func readNodes(r *reader) (nodes []Node, err error) {
 					if r.depth == 0 {
 						err = errUnexpectedRightBracket
 					}
+					r.discardBytes(1)
 					return
 				}
 				break
@@ -124,6 +125,7 @@ func readNode(r *reader) (Node, error) {
 			for i := range children {
 				node.AddChild(children[i])
 			}
+			return node, nil
 		} else {
 			err = readArgOrProp(r, &node)
 			if err != nil {
