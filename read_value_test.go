@@ -48,6 +48,20 @@ func TestReadsRawString(t *testing.T) {
 	assert.ErrorIs(t, err, ErrInvalidSyntax)
 }
 
+func TestReadsString(t *testing.T) {
+
+	reader := readerFromString(`r##"foo"## "bar"`)
+
+	s, err := readString(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", s)
+
+	_ = readUntilSignificant(reader)
+	s, err = readString(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, "bar", s)
+}
+
 func TestReadsBool(t *testing.T) {
 
 	reader := readerFromString("truefalsetent")
@@ -112,6 +126,60 @@ func TestReadsNumberBinary(t *testing.T) {
 	reader := readerFromString("0b1 -0b1000_0001")
 	expectNumber(t, reader, 1.0)
 	expectNumber(t, reader, -129.0)
+}
+
+func TestReadsBareIdentifier(t *testing.T) {
+
+	reader := readerFromString("abc")
+	id, err := readBareIdentifier(reader, false)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "abc", id)
+
+	reader = readerFromString("def ")
+	id, err = readBareIdentifier(reader, false)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "def", id)
+
+	reader = readerFromString("012")
+	_, err = readBareIdentifier(reader, false)
+	assert.ErrorIs(t, err, ErrInvalidBareIdentifier)
+
+	reader = readerFromString("-cool")
+	id, err = readBareIdentifier(reader, false)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "-cool", id)
+
+	reader = readerFromString("-12")
+	_, err = readBareIdentifier(reader, false)
+	assert.ErrorIs(t, err, ErrInvalidBareIdentifier)
+
+	reader = readerFromString(`" `)
+	_, err = readBareIdentifier(reader, false)
+	assert.ErrorIs(t, err, ErrInvalidBareIdentifier)
+}
+
+func TestReadsIdentifier(t *testing.T) {
+
+	reader := readerFromString(`foo "bar baz" radio r#"gaga"#`)
+
+	ident, err := readIdentifier(reader, false)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "foo", ident)
+
+	_ = readUntilSignificant(reader)
+	ident, err = readIdentifier(reader, false)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "bar baz", ident)
+
+	_ = readUntilSignificant(reader)
+	ident, err = readIdentifier(reader, false)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "radio", ident)
+
+	_ = readUntilSignificant(reader)
+	ident, err = readIdentifier(reader, false)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "gaga", ident)
 }
 
 func TestReadsTypeHint(t *testing.T) {

@@ -62,24 +62,6 @@ func readQuotedStringInner(r *reader) (string, error) {
 		} else if ch == '"' {
 
 			toRet := string(bytes[:len(bytes)-1])
-
-			/*
-				temp, err := r.peekN(count + 1)
-				if err != nil {
-					if err.Error() != eof {
-						return toRet, err
-					}
-					r.discard(count)
-					return toRet, nil
-				}
-
-
-				ch = rune(temp[len(temp)-1])
-				if !unicode.IsSpace(ch) && ch != ';' {
-					return toRet, ErrInvalidSyntax
-				}
-			*/
-
 			r.discard(count)
 			return toRet, nil
 		}
@@ -145,6 +127,25 @@ func readRawString(r *reader) (string, error) {
 		}
 
 		length++
+	}
+}
+
+var ErrExpectedString = fmt.Errorf("%w: expected string", ErrInvalidSyntax)
+
+func readString(r *reader) (string, error) {
+	ch, err := r.peek()
+	if err != nil {
+		return "", err
+	}
+
+	switch ch {
+	case '"':
+		return readQuotedString(r)
+	case 'r':
+		r.discard(1)
+		return readRawString(r)
+	default:
+		return "", ErrExpectedString
 	}
 }
 
@@ -304,6 +305,104 @@ func readNumber(r *reader) (*big.Float, error) {
 	return new(big.Float).SetInt64(val), err
 }
 
+var ErrInvalidBareIdentifier = fmt.Errorf("%w: not a valid bare identifier", ErrInvalidSyntax)
+
+func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
+
+	ch, err := r.peek()
+	if err != nil {
+		return "", err
+	}
+
+	if !isAllowedInitialCharacter(ch) {
+		return "", ErrInvalidBareIdentifier
+	}
+
+	chars := make([]rune, 0, 16)
+	chars = append(chars, ch)
+	r.discard(1)
+
+	for {
+
+		ch, err := r.peek()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return "", err
+		}
+
+		if isWhitespace(ch) {
+			break
+		}
+
+		if !isRuneAllowedInBareIdentifier(rune(ch)) {
+			if stopOnCloseParen && ch == ')' {
+				break
+			}
+			return "", ErrInvalidBareIdentifier
+		}
+
+		_, _ = r.readRune()
+		chars = append(chars, ch)
+	}
+
+	ident := string(chars)
+	// Sanity check: could be starting with -digit at this point
+	if !isAllowedBareIdentifier(ident) {
+		return "", ErrInvalidBareIdentifier
+	}
+
+	return Identifier(ident), nil
+}
+
+var ErrInvalidIdentifier = fmt.Errorf("%w: not a valid identifier", ErrInvalidSyntax)
+var ErrInvalidInitialCharacter = fmt.Errorf("%w: not a valid initial character", ErrInvalidSyntax)
+
+func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
+	ch, err := r.peek()
+	if err != nil {
+		return "", err
+	}
+
+	if ch == '"' {
+		s, err := readQuotedString(r)
+		return Identifier(s), err
+	}
+
+	// r could mean a raw string or a bare ident, more checks are necessary
+	if ch == 'r' {
+		s, err := r.peekN(2)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				r.discard(1)
+				return "r", nil
+			}
+			return "", nil
+		}
+
+		switch s[1] {
+		case '"':
+			r.discard(1)
+			s, err := readRawString(r)
+			return Identifier(s), err
+		case '#':
+			// TODO Still no idea, but assume it's a raw string for now
+			r.discard(1)
+			s, err := readRawString(r)
+			return Identifier(s), err
+		default:
+			return readBareIdentifier(r, stopOnCloseParen)
+		}
+	}
+
+	if isAllowedInitialCharacter(ch) {
+		return readBareIdentifier(r, stopOnCloseParen)
+	}
+
+	return "", ErrInvalidInitialCharacter
+}
+
 func readTypeHint(r *reader) (Identifier, error) {
 
 	ch, err := r.peek()
@@ -317,45 +416,20 @@ func readTypeHint(r *reader) (Identifier, error) {
 
 	r.discard(1)
 
+	id, err := readIdentifier(r, true)
+	if err != nil {
+		return "", err
+	}
+
 	ch, err = r.peek()
 	if err != nil {
 		return "", err
 	}
 
-	if ch == '"' {
-		qs, err := readQuotedString(r)
-		if err != nil {
-			return "", err
-		}
-		ch, err := r.peek()
-		if err != nil {
-			return "", err
-		}
-		if ch == ')' {
-			r.discard(1)
-			return Identifier(qs), nil
-		} else {
-			return "", ErrInvalidSyntax
-		}
+	if ch == ')' {
+		r.discard(1)
+		return id, nil
 	}
 
-	length := 1
-	for {
-		id, err := r.peekN(length)
-		if err != nil {
-			return "", err
-		}
-
-		if id[len(id)-1] == ')' {
-			s := string(id[:len(id)-1])
-			if isAllowedBareIdentifier(s) {
-				r.discard(1)
-				return Identifier(s), nil
-			} else {
-				return "", ErrInvalidBareIdentifier
-			}
-		}
-
-		length++
-	}
+	return "", ErrInvalidSyntax
 }

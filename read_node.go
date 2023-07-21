@@ -26,7 +26,7 @@ func readNode(r *reader) (Node, error) {
 		node.TypeHint = hint
 	}
 
-	name, err := readIdentifier(r)
+	name, err := readIdentifier(r, false)
 	if err != nil {
 		return node, err
 	}
@@ -143,22 +143,6 @@ func readArgOrProp(r *reader, dest *Node) error {
 
 		length++
 	}
-}
-
-func readIdentifier(r *reader) (Identifier, error) {
-	ch, err := r.peek()
-	if err != nil {
-		return "", err
-	}
-
-	if ch == '"' {
-		s, err := readQuotedString(r)
-		return Identifier(s), err
-	}
-
-	// TODO read bare identifier
-
-	return "", ErrInvalidSyntax
 }
 
 // skipUntilNewLine discards the reader to the next new line character.

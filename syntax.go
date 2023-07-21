@@ -1,8 +1,8 @@
 package kdl
 
 import (
-	"fmt"
 	"regexp"
+	"unicode"
 
 	"golang.org/x/exp/slices"
 )
@@ -47,8 +47,21 @@ func isWhitespace(ch rune) bool {
 type Identifier string
 
 var patternBareIdentifier = regexp.MustCompile(`^([^\/(){}<>;[\]=,"0-9\-+\s]|[\-+][^\/(){}<>;[\]=,"0-9\s])[^\/(){}<>;[\]=,"\s]*$`)
-var ErrInvalidBareIdentifier = fmt.Errorf("%w: not a valid bare identifier", ErrInvalidSyntax)
 
 func isAllowedBareIdentifier(s string) bool {
 	return !slices.Contains(keywords[:], s) && patternBareIdentifier.MatchString(s)
+}
+
+var charsNotInBareIdentifier = [...]rune{
+	'(', ')', '{', '}', '[', ']',
+	'/', '\\', '<', '>', ';', '=', ',', '"',
+}
+
+func isRuneAllowedInBareIdentifier(ch rune) bool {
+	return !slices.Contains(charsNotInBareIdentifier[:], ch) && ch > 0x20 && ch <= 0x10ffff
+}
+
+// isAllowedInitialCharacter checks if a bare identifier is allowed to start with this rune.
+func isAllowedInitialCharacter(ch rune) bool {
+	return !unicode.IsDigit(ch) && isRuneAllowedInBareIdentifier(ch)
 }
