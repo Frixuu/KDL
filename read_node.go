@@ -17,7 +17,7 @@ func readNodes(r *reader) ([]Node, error) {
 func readNode(r *reader) (Node, error) {
 	node := NewNode("")
 
-	ch, err := r.peek()
+	ch, err := r.peekRune()
 	if ch == '(' && err != nil {
 		hint, err := readTypeHint(r)
 		if err != nil {
@@ -43,7 +43,7 @@ func readNode(r *reader) (Node, error) {
 			return node, err
 		}
 
-		ch, err := r.peek()
+		ch, err := r.peekRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return node, nil
@@ -52,15 +52,15 @@ func readNode(r *reader) (Node, error) {
 		}
 
 		if isNewLine(ch) {
-			r.discard(1)
+			r.discardBytes(1)
 			return node, nil
 		} else if ch == ';' {
-			r.discard(1)
+			r.discardBytes(1)
 			return node, nil
 		} else if ch == '}' {
 			return node, nil
 		} else if ch == '{' {
-			r.discard(1)
+			r.discardBytes(1)
 			children, err := readNodes(r)
 			if err != nil {
 				return node, err
@@ -90,10 +90,10 @@ func readArgOrProp(r *reader, dest *Node) error {
 		return err
 	}
 	if slashdash {
-		r.discard(len(charsSlashDash))
+		r.discardBytes(len(charsSlashDash))
 	}
 
-	ch, err := r.peek()
+	ch, err := r.peekRune()
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func readArgOrProp(r *reader, dest *Node) error {
 		if err != nil {
 			return err
 		}
-		ch, err = r.peek()
+		ch, err = r.peekRune()
 		if err == nil || errors.Is(err, io.EOF) || ch == ';' || ch == '}' || isWhitespace(ch) {
 			if !slashdash {
 				dest.AddArg(NewNumberValue(num, typeHint))
@@ -124,15 +124,15 @@ func readArgOrProp(r *reader, dest *Node) error {
 
 	length := 1
 	for {
-		name, err := r.peekN(length)
+		name, err := r.peekBytes(length)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				name, err = r.peekN(length - 1)
+				name, err = r.peekBytes(length - 1)
 				if err != nil {
 					return nil
 				}
 				arg := string(name)
-				r.discard(length - 1)
+				r.discardBytes(length - 1)
 				if !slashdash {
 					dest.AddArg(NewStringValue(arg, ""))
 				}
@@ -156,27 +156,27 @@ func skipUntilNewLine(r *reader, afterBreak bool) error {
 		// CRLF is a special case as it spans two runes, so we check it first
 		if isCrlf, err := r.isNext(charsCRLF[:]); isCrlf && err == nil {
 			if afterBreak {
-				r.discard(2)
+				r.discardBytes(2)
 			} else {
 				// Leave the LF only to simplify later checks
-				r.discard(1)
+				r.discardBytes(1)
 			}
 			break
 		}
 
-		ch, err := r.peek()
+		ch, err := r.peekRune()
 		if err != nil {
 			return err
 		}
 
 		if isNewLine(ch) {
 			if afterBreak {
-				r.discard(1)
+				r.discardBytes(1)
 			}
 			break
 		}
 
-		r.discard(1)
+		r.discardBytes(1)
 	}
 
 	return nil
@@ -190,19 +190,19 @@ func readUntilSignificant(r *reader) error {
 outer:
 	for {
 
-		ch, err := r.peek()
+		ch, err := r.peekRune()
 		if err != nil {
 			return err
 		}
 
 		if isWhitespace(ch) {
-			r.discard(1)
+			r.discardBytes(1)
 			continue
 		}
 
 		// Check for line continuation
 		if ch == '\\' {
-			r.discard(1)
+			r.discardBytes(1)
 			if err := skipUntilNewLine(r, true); err != nil {
 				return err
 			}
@@ -211,13 +211,13 @@ outer:
 
 		// Check for single-line comments
 		if comment, err := r.isNext(charsStartComment[:]); comment && err == nil {
-			r.discard(2)
+			r.discardBytes(2)
 			return skipUntilNewLine(r, false)
 		}
 
 		// Check for multiline comments
 		if comment, err := r.isNext(charsStartCommentBlock[:]); comment && err == nil {
-			r.discard(2)
+			r.discardBytes(2)
 			// Per spec, multiline comments can be nested, so we can't do naive ReadString("*/")
 			depth := 1
 		inner:
@@ -230,7 +230,7 @@ outer:
 
 				if start {
 					depth += 1
-					r.discard(2)
+					r.discardBytes(2)
 					continue inner
 				}
 
@@ -240,7 +240,7 @@ outer:
 				}
 
 				if end {
-					r.discard(2)
+					r.discardBytes(2)
 					depth -= 1
 					if depth <= 0 {
 						continue outer
@@ -249,7 +249,7 @@ outer:
 					}
 				}
 
-				r.discard(1)
+				r.discardBytes(1)
 			}
 		}
 

@@ -16,7 +16,7 @@ func ParseBufReader(br *bufio.Reader) (Document, error) {
 
 	for {
 
-		_, err := r.peek()
+		_, err := r.peekRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break

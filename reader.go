@@ -37,18 +37,8 @@ func (r *reader) lastRead() rune {
 	return r.current
 }
 
-func (r *reader) discardLine() error {
-	_, err := r.reader.ReadString('\n')
-	if err != nil {
-		return err
-	}
-
-	err = r.reader.UnreadByte()
-	return err
-}
-
-func (r *reader) discard(count int) {
-	s, _ := r.peekN(count)
+func (r *reader) discardBytes(count int) {
+	s, _ := r.peekBytes(count)
 	for _, b := range s {
 		var nl byte = '\n'
 		if b == nl {
@@ -61,12 +51,12 @@ func (r *reader) discard(count int) {
 	r.reader.Discard(count)
 }
 
-// peekN tries to return next N bytes without advancing the reader.
-func (r *reader) peekN(count int) ([]byte, error) {
+// peekBytes tries to return next N bytes without advancing the reader.
+func (r *reader) peekBytes(count int) ([]byte, error) {
 	return r.reader.Peek(count)
 }
 
-func (r *reader) peek() (rune, error) {
+func (r *reader) peekRune() (rune, error) {
 	ch, _, err := r.reader.ReadRune()
 	if err != nil {
 		return ch, err
@@ -95,13 +85,13 @@ func (r *reader) unreadRune() error {
 
 func (r *reader) isNext(expected []byte) (bool, error) {
 
-	next, err := r.peekN(len(expected))
+	next, err := r.peekBytes(len(expected))
 	if err != nil {
 		return false, err
 	}
 
 	if bytes.Equal(next, expected) {
-		r.discard(len(expected))
+		r.discardBytes(len(expected))
 		return true, nil
 	}
 

@@ -95,7 +95,7 @@ func expectNumber(t *testing.T, r *reader, v float64) {
 	assert.NoError(t, err)
 	x, _ := n.Float64()
 	assert.InDelta(t, v, x, 0.0001)
-	r.discard(1)
+	r.discardBytes(1)
 }
 
 func TestReadsNumberDecimal(t *testing.T) {

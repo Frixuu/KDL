@@ -38,18 +38,18 @@ func readQuotedStringInner(r *reader) (string, error) {
 
 	for {
 
-		bytes, err := r.peekN(count)
+		bytes, err := r.peekBytes(count)
 		if err != nil {
-			r.discard(count)
+			r.discardBytes(count)
 			return string(bytes), err
 		}
 
 		ch := rune(bytes[len(bytes)-1])
 		if ch == '\\' {
 
-			bs, err := r.peekN(count + 1)
+			bs, err := r.peekBytes(count + 1)
 			if err != nil {
-				r.discard(count)
+				r.discardBytes(count)
 				return string(bytes), err
 			}
 
@@ -62,7 +62,7 @@ func readQuotedStringInner(r *reader) (string, error) {
 		} else if ch == '"' {
 
 			toRet := string(bytes[:len(bytes)-1])
-			r.discard(count)
+			r.discardBytes(count)
 			return toRet, nil
 		}
 
@@ -79,7 +79,7 @@ func readRawString(r *reader) (string, error) {
 
 		length++
 
-		bytes, err := r.peekN(length)
+		bytes, err := r.peekBytes(length)
 		if err != nil {
 			return "", err
 		}
@@ -102,7 +102,7 @@ func readRawString(r *reader) (string, error) {
 
 	for {
 
-		bytes, err := r.peekN(length)
+		bytes, err := r.peekBytes(length)
 		if err != nil {
 			return "", err
 		}
@@ -122,7 +122,7 @@ func readRawString(r *reader) (string, error) {
 		}
 
 		if closingPoundCount == leadingPoundCount {
-			r.discard(length)
+			r.discardBytes(length)
 			return string(bytes[start : len(bytes)-leadingPoundCount-1]), nil
 		}
 
@@ -133,7 +133,7 @@ func readRawString(r *reader) (string, error) {
 var ErrExpectedString = fmt.Errorf("%w: expected string", ErrInvalidSyntax)
 
 func readString(r *reader) (string, error) {
-	ch, err := r.peek()
+	ch, err := r.peekRune()
 	if err != nil {
 		return "", err
 	}
@@ -142,7 +142,7 @@ func readString(r *reader) (string, error) {
 	case '"':
 		return readQuotedString(r)
 	case 'r':
-		r.discard(1)
+		r.discardBytes(1)
 		return readRawString(r)
 	default:
 		return "", ErrExpectedString
@@ -157,7 +157,7 @@ func readBool(r *reader) (bool, error) {
 
 	var expected []byte
 
-	start, err := r.peek()
+	start, err := r.peekRune()
 	if err != nil {
 		return false, err
 	}
@@ -226,7 +226,7 @@ func readNumber(r *reader) (*big.Float, error) {
 
 		length++
 
-		bytes, err = r.peekN(length)
+		bytes, err = r.peekBytes(length)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -242,7 +242,7 @@ func readNumber(r *reader) (*big.Float, error) {
 	}
 
 	strOriginal := string(bytes)
-	r.discard(length - 1)
+	r.discardBytes(length - 1)
 
 	str := strOriginal
 	if len(str) == 0 {
@@ -309,7 +309,7 @@ var ErrInvalidBareIdentifier = fmt.Errorf("%w: not a valid bare identifier", Err
 
 func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 
-	ch, err := r.peek()
+	ch, err := r.peekRune()
 	if err != nil {
 		return "", err
 	}
@@ -320,11 +320,11 @@ func readBareIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 
 	chars := make([]rune, 0, 16)
 	chars = append(chars, ch)
-	r.discard(1)
+	r.discardBytes(1)
 
 	for {
 
-		ch, err := r.peek()
+		ch, err := r.peekRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -360,7 +360,7 @@ var ErrInvalidIdentifier = fmt.Errorf("%w: not a valid identifier", ErrInvalidSy
 var ErrInvalidInitialCharacter = fmt.Errorf("%w: not a valid initial character", ErrInvalidSyntax)
 
 func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
-	ch, err := r.peek()
+	ch, err := r.peekRune()
 	if err != nil {
 		return "", err
 	}
@@ -372,10 +372,10 @@ func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 
 	// r could mean a raw string or a bare ident, more checks are necessary
 	if ch == 'r' {
-		s, err := r.peekN(2)
+		s, err := r.peekBytes(2)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				r.discard(1)
+				r.discardBytes(1)
 				return "r", nil
 			}
 			return "", nil
@@ -383,12 +383,12 @@ func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 
 		switch s[1] {
 		case '"':
-			r.discard(1)
+			r.discardBytes(1)
 			s, err := readRawString(r)
 			return Identifier(s), err
 		case '#':
 			// TODO Still no idea, but assume it's a raw string for now
-			r.discard(1)
+			r.discardBytes(1)
 			s, err := readRawString(r)
 			return Identifier(s), err
 		default:
@@ -405,7 +405,7 @@ func readIdentifier(r *reader, stopOnCloseParen bool) (Identifier, error) {
 
 func readTypeHint(r *reader) (Identifier, error) {
 
-	ch, err := r.peek()
+	ch, err := r.peekRune()
 	if err != nil {
 		return "", err
 	}
@@ -414,20 +414,20 @@ func readTypeHint(r *reader) (Identifier, error) {
 		return "", nil
 	}
 
-	r.discard(1)
+	r.discardBytes(1)
 
 	id, err := readIdentifier(r, true)
 	if err != nil {
 		return "", err
 	}
 
-	ch, err = r.peek()
+	ch, err = r.peekRune()
 	if err != nil {
 		return "", err
 	}
 
 	if ch == ')' {
-		r.discard(1)
+		r.discardBytes(1)
 		return id, nil
 	}
 
