@@ -236,9 +236,17 @@ var (
 	ErrEmptyNumber         = fmt.Errorf("%w (number is empty)", ErrInvalidNumValue)
 	ErrSepsOnlyInDecimals  = fmt.Errorf("%w (separators available only in numbers base 10)", ErrInvalidNumValue)
 	ErrTooManySepsInNumber = fmt.Errorf("%w (too many decimal separators)", ErrInvalidNumValue)
+
+	errFailedToParseInt   = fmt.Errorf("%w (could not parse integer)", ErrInvalidNumValue)
+	errFailedToParseFloat = fmt.Errorf("%w (could not parse float)", ErrInvalidNumValue)
 )
 
-func readNumber(r *reader) (*big.Float, error) {
+type Number struct {
+	Type  TypeTag
+	Value interface{}
+}
+
+func readNumber(r *reader) (Number, error) {
 
 	length := 0
 	var bytes []byte
@@ -253,7 +261,7 @@ func readNumber(r *reader) (*big.Float, error) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return big.NewFloat(0), err
+			return Number{}, err
 		}
 
 		ch := rune(bytes[len(bytes)-1])
@@ -268,7 +276,7 @@ func readNumber(r *reader) (*big.Float, error) {
 
 	str := strOriginal
 	if len(str) == 0 {
-		return big.NewFloat(0), ErrEmptyNumber
+		return Number{}, ErrEmptyNumber
 	}
 
 	sign := 0
@@ -287,29 +295,29 @@ func readNumber(r *reader) (*big.Float, error) {
 		if strings.HasPrefix(str, "0b") {
 			base = 2
 			if !patternBinary.MatchString(strOriginal) {
-				return big.NewFloat(0), ErrBadBinary
+				return Number{}, ErrBadBinary
 			}
 		} else if strings.HasPrefix(str, "0o") {
 			base = 8
 			if !patternOctal.MatchString(strOriginal) {
-				return big.NewFloat(0), ErrBadOctal
+				return Number{}, ErrBadOctal
 			}
 		} else if strings.HasPrefix(str, "0x") {
 			base = 16
 			if !patternHex.MatchString(strOriginal) {
-				return big.NewFloat(0), ErrBadHex
+				return Number{}, ErrBadHex
 			}
 		}
 	}
 
 	if base == 10 {
 		if !patternDecimal.MatchString(strOriginal) {
-			return big.NewFloat(0), ErrBadDecimal
+			return Number{}, ErrBadDecimal
 		}
 	} else {
 		str = str[2:]
 		if strings.ContainsRune(str, '.') {
-			return big.NewFloat(0), ErrSepsOnlyInDecimals
+			return Number{}, ErrSepsOnlyInDecimals
 		}
 	}
 
@@ -318,13 +326,22 @@ func readNumber(r *reader) (*big.Float, error) {
 	}
 
 	str = strings.ReplaceAll(str, "_", "")
-	if base == 10 {
+	if base == 10 && strings.ContainsAny(str, ".eE") {
 		f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
-		return f, err
+		if err != nil {
+			return Number{}, errFailedToParseFloat
+		}
+		return Number{Type: TypeFloat, Value: f}, nil
 	}
 
-	val, err := strconv.ParseInt(str, base, 64)
-	return new(big.Float).SetInt64(val), err
+	// Numbers in other bases are guaranteed to be integers
+	i := new(big.Int)
+	_, ok := i.SetString(str, base)
+	if ok {
+		return Number{Type: TypeInteger, Value: i}, nil
+	}
+
+	return Number{}, errFailedToParseInt
 }
 
 type errInvalidBareIdent struct {
@@ -525,11 +542,19 @@ func readValue(r *reader) (Value, error) {
 	}
 
 	if unicode.IsDigit(ch) {
-		v, err := readNumber(r)
+		n, err := readNumber(r)
 		if err != nil {
 			return newInvalidValue(), err
 		}
-		return NewNumberValue(v, hint), nil
+
+		switch n.Type {
+		case TypeFloat:
+			return NewFloatValue(n.Value.(*big.Float), hint), nil
+		case TypeInteger:
+			return NewIntegerValue(n.Value.(*big.Int), hint), nil
+		default:
+			return newInvalidValue(), ErrInvalidNumValue
+		}
 	}
 
 	switch ch {
@@ -546,11 +571,19 @@ func readValue(r *reader) (Value, error) {
 		}
 		return NewBoolValue(v, hint), nil
 	case '-', '+':
-		v, err := readNumber(r)
+		n, err := readNumber(r)
 		if err != nil {
 			return newInvalidValue(), err
 		}
-		return NewNumberValue(v, hint), nil
+
+		switch n.Type {
+		case TypeFloat:
+			return NewFloatValue(n.Value.(*big.Float), hint), nil
+		case TypeInteger:
+			return NewIntegerValue(n.Value.(*big.Int), hint), nil
+		default:
+			return newInvalidValue(), ErrInvalidNumValue
+		}
 	case 'r':
 		v, err := readRawString(r)
 		if err != nil {

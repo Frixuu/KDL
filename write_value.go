@@ -26,9 +26,18 @@ func writeBool(w *writer, b bool) error {
 	return err
 }
 
-func writeNumber(w *writer, f *big.Float) error {
-	_, err := w.writer.WriteString(f.Text('g', -1))
+func writeInteger(w *writer, i *big.Int) error {
+	_, err := w.writer.WriteString(i.Text(10))
 	return err
+}
+
+func writeFloat(w *writer, f *big.Float) (err error) {
+	text := f.Text('g', -1)
+	_, err = w.writer.WriteString(text)
+	if err == nil && !strings.ContainsAny(text, ".eE") {
+		_, err = w.writer.WriteString(".0")
+	}
+	return
 }
 
 func writeNull(w *writer) error {
@@ -46,8 +55,10 @@ func writeValue(w *writer, v *Value) error {
 	switch v.Type {
 	case TypeString:
 		return writeString(w, v.AsString())
-	case TypeNumber:
-		return writeNumber(w, v.AsNumber())
+	case TypeInteger:
+		return writeInteger(w, v.AsInteger())
+	case TypeFloat:
+		return writeFloat(w, v.AsFloat())
 	case TypeBool:
 		return writeBool(w, v.AsBool())
 	case TypeNull:

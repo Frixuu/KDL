@@ -14,12 +14,12 @@ func TestReadsSimpleNode(t *testing.T) {
 
 	n, err := readNode(reader)
 	assert.NoError(t, err)
-	assert.EqualExportedValues(t, Node{
+	assert.Equal(t, Node{
 		Name:  "foo",
 		Props: map[Identifier]Value{},
 		Args: []Value{
 			NewStringValue("bar", ""),
-			NewNumberValue(big.NewFloat(2.0), "abc"),
+			NewIntegerValue(big.NewInt(2), "abc"),
 		},
 	}, n)
 

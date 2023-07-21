@@ -14,7 +14,7 @@ func TestDocumentWritesCorrectly(t *testing.T) {
 			{
 				Name: "abc",
 				Args: []Value{
-					NewNumberValue(big.NewFloat(2.0), ""),
+					NewFloatValue(big.NewFloat(2.0), ""),
 					NewStringValue("foo", ""),
 				},
 				Children: []Node{
@@ -34,7 +34,7 @@ func TestDocumentWritesCorrectly(t *testing.T) {
 	}).WriteString()
 
 	assert.NoError(t, err)
-	assert.Equal(t, `abc 2 "foo" {
+	assert.Equal(t, `abc 2.0 "foo" {
     def quox=false zoom="voom"
 }
 "ghi jkl"

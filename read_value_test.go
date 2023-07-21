@@ -101,42 +101,54 @@ func TestReadsNull(t *testing.T) {
 	assert.ErrorIs(t, err, ErrInvalidSyntax)
 }
 
-func expectNumber(t *testing.T, r *reader, v float64) {
+func expectFloat(t *testing.T, r *reader, v float64) {
+	_ = readUntilSignificant(r)
 	n, err := readNumber(r)
 	assert.NoError(t, err)
-	x, _ := n.Float64()
+	assert.Equal(t, TypeFloat, n.Type)
+	x, _ := n.Value.(*big.Float).Float64()
 	assert.InDelta(t, v, x, 0.0001)
-	r.discardBytes(1)
+}
+
+func expectInt(t *testing.T, r *reader, v int64) {
+	_ = readUntilSignificant(r)
+	n, err := readNumber(r)
+	assert.NoError(t, err)
+	assert.Equal(t, TypeInteger, n.Type)
+	x := n.Value.(*big.Int).Int64()
+	assert.Equal(t, v, x)
 }
 
 func TestReadsNumberDecimal(t *testing.T) {
-	reader := readerFromString("4 +2 -6 1_33_7 4e3 7e-2 -1.1e-2")
-	expectNumber(t, reader, 4.0)
-	expectNumber(t, reader, 2.0)
-	expectNumber(t, reader, -6.0)
-	expectNumber(t, reader, 1337.0)
-	expectNumber(t, reader, 4000.0)
-	expectNumber(t, reader, 0.07)
-	expectNumber(t, reader, -0.011)
+	reader := readerFromString("0.0 0 4 +2 -6 1_33_7 4e3 7e-2 -1.1e-2")
+	expectFloat(t, reader, 0.0)
+	expectInt(t, reader, 0)
+	expectInt(t, reader, 4)
+	expectInt(t, reader, 2)
+	expectInt(t, reader, -6)
+	expectInt(t, reader, 1337)
+	expectFloat(t, reader, 4000.0)
+	expectFloat(t, reader, 0.07)
+	expectFloat(t, reader, -0.011)
 }
 
 func TestReadsNumberHex(t *testing.T) {
 	reader := readerFromString("0xc 0xa_0_f -0xD2")
-	expectNumber(t, reader, 12.0)
-	expectNumber(t, reader, 2575.0)
-	expectNumber(t, reader, -210.0)
+	expectInt(t, reader, 12)
+	expectInt(t, reader, 2575)
+	expectInt(t, reader, -210)
 }
 
 func TestReadsNumberOctal(t *testing.T) {
 	reader := readerFromString("0o1_0 -0o26")
-	expectNumber(t, reader, 8.0)
-	expectNumber(t, reader, -22.0)
+	expectInt(t, reader, 8)
+	expectInt(t, reader, -22)
 }
 
 func TestReadsNumberBinary(t *testing.T) {
 	reader := readerFromString("0b1 -0b1000_0001")
-	expectNumber(t, reader, 1.0)
-	expectNumber(t, reader, -129.0)
+	expectInt(t, reader, 1)
+	expectInt(t, reader, -129)
 }
 
 func TestReadsBareIdentifier(t *testing.T) {
@@ -233,7 +245,7 @@ func TestReadsValue(t *testing.T) {
 	value, err = readValue(reader)
 	assert.NoError(t, err)
 	// different rounding mode
-	assert.EqualExportedValues(t, NewNumberValue(big.NewFloat(-3.5), "temp"), value)
+	assert.EqualExportedValues(t, NewFloatValue(big.NewFloat(-3.5), "temp"), value)
 
 	_ = readUntilSignificant(reader)
 	value, err = readValue(reader)

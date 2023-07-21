@@ -14,8 +14,9 @@ const (
 
 	TypeNull
 	TypeBool
-	TypeNumber
 	TypeString
+	TypeInteger
+	TypeFloat
 )
 
 type Value struct {
@@ -38,18 +39,6 @@ func (v *Value) AsBool() bool {
 	}
 	return v.RawValue.(bool)
 }
-
-func NewNumberValue(v *big.Float, hint Identifier) Value {
-	return Value{Type: TypeNumber, RawValue: v, TypeHint: hint}
-}
-
-func (v *Value) AsNumber() *big.Float {
-	if v.Type != TypeNumber {
-		panic("value is not a number")
-	}
-	return v.RawValue.(*big.Float)
-}
-
 func NewStringValue(v string, hint Identifier) Value {
 	return Value{Type: TypeString, RawValue: v, TypeHint: hint}
 }
@@ -59,6 +48,28 @@ func (v *Value) AsString() string {
 		panic("value is not a string")
 	}
 	return v.RawValue.(string)
+}
+
+func NewIntegerValue(v *big.Int, hint Identifier) Value {
+	return Value{Type: TypeInteger, RawValue: v, TypeHint: hint}
+}
+
+func (v *Value) AsInteger() *big.Int {
+	if v.Type != TypeInteger {
+		panic("value is not an integer")
+	}
+	return v.RawValue.(*big.Int)
+}
+
+func NewFloatValue(v *big.Float, hint Identifier) Value {
+	return Value{Type: TypeFloat, RawValue: v, TypeHint: hint}
+}
+
+func (v *Value) AsFloat() *big.Float {
+	if v.Type != TypeFloat {
+		panic("value is not a real number")
+	}
+	return v.RawValue.(*big.Float)
 }
 
 func newInvalidValue() Value {

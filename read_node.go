@@ -90,7 +90,7 @@ func readNode(r *reader) (Node, error) {
 
 	for {
 
-		err = readUntilSignificant(r)
+		err := readUntilSignificant(r)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return node, nil
@@ -234,14 +234,14 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 	v.TypeHint = hint
 
 	ch, err := r.peekRune()
-	if err != nil {
-		return err
-	}
-	if err == nil || errors.Is(err, io.EOF) || isValidValueTerminator(ch) {
+
+	if errors.Is(err, io.EOF) || (err == nil && isValidValueTerminator(ch)) {
 		if !discard {
 			dest.AddArg(v)
 		}
 		return nil
+	} else if err != nil {
+		return err
 	}
 
 	return errUnexpectedTokenAfterValue
