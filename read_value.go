@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/samber/mo"
 )
 
 var escapeReplacer = strings.NewReplacer(
@@ -527,36 +529,41 @@ func readIdentifier(r *reader, stopMode identStopMode) (i Identifier, err error,
 }
 
 var errExpectedCloseHint = fmt.Errorf("%w: expected ) after type hint", ErrInvalidSyntax)
+var noHint = mo.None[Identifier]()
 
-func readMaybeTypeHint(r *reader) (Identifier, error) {
+func hint(name string) mo.Option[Identifier] {
+	return mo.Some(Identifier(name))
+}
+
+func readMaybeTypeHint(r *reader) (mo.Option[Identifier], error) {
 
 	ch, err := r.peekRune()
 	if err != nil {
-		return "", err
+		return noHint, err
 	}
 
 	if ch != '(' {
-		return "", nil
+		return noHint, nil
 	}
 
 	r.discardBytes(1)
 
 	id, err, _ := readIdentifier(r, stopModeCloseParen)
 	if err != nil {
-		return "", err
+		return noHint, err
 	}
 
 	ch, err = r.peekRune()
 	if err != nil {
-		return "", err
+		return noHint, err
 	}
 
 	if ch == ')' {
 		r.discardBytes(1)
-		return Identifier(id), nil
+		return mo.Some(id), nil
 	}
 
-	return "", errExpectedCloseHint
+	return noHint, errExpectedCloseHint
 }
 
 type errExpectedValue struct {

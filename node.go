@@ -1,12 +1,14 @@
 package kdl
 
+import "github.com/samber/mo"
+
 // Node is an object in a KDL Document.
 type Node struct {
 	Name     Identifier
 	Args     []Value
 	Props    map[Identifier]Value
 	Children []Node
-	TypeHint Identifier
+	TypeHint mo.Option[Identifier]
 }
 
 // NewNode creates a new KDL node.

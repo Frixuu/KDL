@@ -3,6 +3,8 @@ package kdl
 import (
 	"errors"
 	"math/big"
+
+	"github.com/samber/mo"
 )
 
 type TypeTag int
@@ -21,15 +23,15 @@ const (
 
 type Value struct {
 	Type     TypeTag
-	TypeHint Identifier
+	TypeHint mo.Option[Identifier]
 	RawValue interface{}
 }
 
-func NewNullValue(hint Identifier) Value {
+func NewNullValue(hint mo.Option[Identifier]) Value {
 	return Value{Type: TypeNull, TypeHint: hint}
 }
 
-func NewBoolValue(v bool, hint Identifier) Value {
+func NewBoolValue(v bool, hint mo.Option[Identifier]) Value {
 	return Value{Type: TypeBool, RawValue: v, TypeHint: hint}
 }
 
@@ -39,7 +41,7 @@ func (v *Value) AsBool() bool {
 	}
 	return v.RawValue.(bool)
 }
-func NewStringValue(v string, hint Identifier) Value {
+func NewStringValue(v string, hint mo.Option[Identifier]) Value {
 	return Value{Type: TypeString, RawValue: v, TypeHint: hint}
 }
 
@@ -50,7 +52,7 @@ func (v *Value) AsString() string {
 	return v.RawValue.(string)
 }
 
-func NewIntegerValue(v *big.Int, hint Identifier) Value {
+func NewIntegerValue(v *big.Int, hint mo.Option[Identifier]) Value {
 	return Value{Type: TypeInteger, RawValue: v, TypeHint: hint}
 }
 
@@ -61,7 +63,7 @@ func (v *Value) AsInteger() *big.Int {
 	return v.RawValue.(*big.Int)
 }
 
-func NewFloatValue(v *big.Float, hint Identifier) Value {
+func NewFloatValue(v *big.Float, hint mo.Option[Identifier]) Value {
 	return Value{Type: TypeFloat, RawValue: v, TypeHint: hint}
 }
 

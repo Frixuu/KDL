@@ -193,7 +193,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 	}
 
 	// This can only be a property if there is no type hint at this time
-	if hint == "" {
+	if hint.IsAbsent() {
 		i, err, quoted := readIdentifier(r, stopModeEquals)
 		if err == nil {
 			// Identifier read successfully.
@@ -201,7 +201,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 			if errors.Is(err, io.EOF) {
 				if quoted {
 					if !discard {
-						dest.AddArg(NewStringValue(string(i), ""))
+						dest.AddArg(NewStringValue(string(i), noHint))
 					}
 					return nil
 				}
@@ -210,7 +210,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 				if isValidValueTerminator(ch) {
 					if quoted {
 						if !discard {
-							dest.AddArg(NewStringValue(string(i), ""))
+							dest.AddArg(NewStringValue(string(i), noHint))
 						}
 						return nil
 					}

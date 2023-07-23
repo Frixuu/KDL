@@ -81,6 +81,10 @@ func writeNode(w *writer, n *Node) error {
 		return err
 	}
 
+	if err := writeTypeHint(w, n.TypeHint); err != nil {
+		return err
+	}
+
 	if err := writeIdentifier(w, n.Name); err != nil {
 		return err
 	}
