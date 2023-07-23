@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var escapeReplacer = strings.NewReplacer(
@@ -420,18 +421,36 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 		return "", &errInvalidInitialCharInBareIdent{ch: ch}
 	}
 
-	chars := make([]rune, 0, 16)
-	chars = append(chars, ch)
-	r.discardRunes(1)
-
+	lengthBytes := 0
 	for {
 
-		ch, err := r.peekRune()
+		b, err := r.peekBytes(lengthBytes + 1)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 			return "", err
+		}
+
+		lastByte := b[len(b)-1]
+		if !utf8.RuneStart(lastByte) {
+			return "", ErrInvalidEncoding
+		}
+
+		runeRemLen := remainingUTF8Bytes(lastByte)
+		if runeRemLen > 0 {
+			b, err = r.peekBytes(lengthBytes + runeRemLen + 1)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return "", ErrUnexpectedEOF
+				}
+				return "", err
+			}
+		}
+
+		ch, _ := utf8.DecodeLastRune(b)
+		if ch == utf8.RuneError {
+			return "", ErrInvalidEncoding
 		}
 
 		if isWhitespace(ch) || isNewLine(ch) {
@@ -449,16 +468,21 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 			return "", &errInvalidCharInBareIdent{ch: ch}
 		}
 
-		r.discardRunes(1)
-		chars = append(chars, ch)
+		lengthBytes += (runeRemLen + 1)
 	}
 
-	ident := string(chars)
+	b, err := r.peekBytes(lengthBytes)
+	if err != nil {
+		return "", err
+	}
+
+	ident := string(b)
 	// Validate, could still be a keyword
 	if !isAllowedBareIdentifier(ident) {
 		return "", &errInvalidBareIdent{ident: ident}
 	}
 
+	r.discardBytes(lengthBytes)
 	return Identifier(ident), nil
 }
 

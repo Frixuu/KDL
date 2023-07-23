@@ -3,12 +3,16 @@ package kdl
 import (
 	"errors"
 	"fmt"
+	"io"
 )
 
 var (
 	ErrInvalidSyntax       = errors.New("invalid syntax")
 	ErrInvalidNumValue     = fmt.Errorf("%w: bad numeric value", ErrInvalidSyntax)
 	ErrUnexpectedSlashdash = fmt.Errorf("%w: unexpected slashdash", ErrInvalidSyntax)
+
+	ErrUnexpectedEOF   = io.ErrUnexpectedEOF
+	ErrInvalidEncoding = errors.New("document is not UTF-8 encoded")
 )
 
 // ErrWithPosition wraps an error,

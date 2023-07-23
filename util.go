@@ -13,3 +13,17 @@ func toPairs[K comparable, V any](m map[K]V) []pair[K, V] {
 	}
 	return pairs
 }
+
+func remainingUTF8Bytes(b byte) int {
+	if b <= 0b0111_1111 {
+		return 0
+	} else if b >= 0b1100_0000 && b <= 0b1101_1111 {
+		return 1
+	} else if b <= 0b1110_1111 {
+		return 2
+	} else if b <= 0b1111_0111 {
+		return 3
+	} else {
+		return -1
+	}
+}
