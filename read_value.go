@@ -6,10 +6,18 @@ import (
 	"io"
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
+
+var unicodeEscapePattern = regexp.MustCompile(`\\u\{([0-9a-fA-F]{1,6})\}`)
+
+func unicodeUnescapeFunc(matched string) string {
+	i, _ := strconv.ParseInt(matched[3:len(matched)-1], 16, 32)
+	return string(rune(i))
+}
 
 var escapeReplacer = strings.NewReplacer(
 	`\/`, `/`,
@@ -29,7 +37,9 @@ func readQuotedString(r *reader) (string, error) {
 		return s, err
 	}
 
-	return escapeReplacer.Replace(s), nil
+	s = unicodeEscapePattern.ReplaceAllStringFunc(s, unicodeUnescapeFunc)
+	s = escapeReplacer.Replace(s)
+	return s, nil
 }
 
 var errExpectedQuotedString = fmt.Errorf("%w: expected quoted string", ErrInvalidSyntax)
@@ -201,13 +211,8 @@ func readBool(r *reader) (bool, error) {
 	}
 
 	if next {
-		if start == 't' {
-			r.discardBytes(4)
-			return true, nil
-		} else {
-			r.discardBytes(5)
-			return false, nil
-		}
+		r.discardBytes(len(expected))
+		return start == 't', nil
 	}
 
 	return false, errExpectedBool
