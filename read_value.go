@@ -42,6 +42,7 @@ func readQuotedString(r *reader) (string, error) {
 	return s, nil
 }
 
+var errUnexpectedEOFInsideString = fmt.Errorf("%w: did you forget to close a string?", ErrUnexpectedEOF)
 var errExpectedQuotedString = fmt.Errorf("%w: expected quoted string", ErrInvalidSyntax)
 
 func readQuotedStringInner(r *reader) (string, error) {
@@ -61,21 +62,25 @@ func readQuotedStringInner(r *reader) (string, error) {
 
 		bytes, err := r.peekBytes(count)
 		if err != nil {
-			r.discardBytes(count)
+			if errors.Is(err, io.EOF) {
+				err = errUnexpectedEOFInsideString
+			}
 			return string(bytes), err
 		}
 
-		ch := rune(bytes[len(bytes)-1])
+		ch := bytes[len(bytes)-1]
 		if ch == '\\' {
 
 			bs, err := r.peekBytes(count + 1)
 			if err != nil {
-				r.discardBytes(count)
+				if errors.Is(err, io.EOF) {
+					err = errUnexpectedEOFInsideString
+				}
 				return string(bytes), err
 			}
 
-			next := bs[len(bs)-1] == byte('"')
-			if next {
+			escaped := bs[len(bs)-1]
+			if escaped == '"' || escaped == '\\' {
 				count += 2
 				continue
 			}

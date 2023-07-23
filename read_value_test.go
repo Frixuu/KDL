@@ -237,7 +237,7 @@ func TestReadsTypeHint(t *testing.T) {
 
 	reader = readerFromString(`("hello\")`)
 	_, err = readMaybeTypeHint(reader)
-	assert.ErrorIs(t, err, io.EOF)
+	assert.ErrorIs(t, err, ErrUnexpectedEOF)
 
 	reader = readerFromString("(aaaaa")
 	_, err = readMaybeTypeHint(reader)
