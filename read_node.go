@@ -59,6 +59,14 @@ func readNodes(r *reader) (nodes []Node, err error) {
 			r.discardBytes(2)
 		}
 
+		err = readUntilSignificant(r)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				err = ErrUnexpectedSlashdash
+			}
+			return
+		}
+
 		var node Node
 		node, err = readNode(r)
 		if err != nil {
@@ -298,7 +306,7 @@ outer:
 		}
 
 		if isWhitespace(ch) {
-			r.discardBytes(1)
+			r.discardRunes(1)
 			continue
 		}
 

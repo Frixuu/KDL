@@ -1,10 +1,5 @@
 package kdl
 
-import (
-	"strconv"
-	"strings"
-)
-
 type pair[K comparable, V any] struct {
 	key   K
 	value V
@@ -17,14 +12,4 @@ func toPairs[K comparable, V any](m map[K]V) []pair[K, V] {
 		pairs = append(pairs, pair[K, V]{key: k, value: v})
 	}
 	return pairs
-}
-
-func tryUnquote(s strings.Builder) string {
-	ss := s.String()
-	unquoted, err := strconv.Unquote(ss)
-	if err != nil {
-		return ss
-	} else {
-		return unquoted
-	}
 }

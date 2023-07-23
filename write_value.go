@@ -5,14 +5,19 @@ import (
 	"strings"
 )
 
-var writeStringReplacer = strings.NewReplacer(
-	"\n", `\n`,
+var unescapeReplacer = strings.NewReplacer(
 	`\`, `\\`,
+	`/`, `\/`,
 	`"`, `\"`,
+	"\n", `\n`,
+	"\r", `\r`,
+	"\t", `\t`,
+	"\b", `\b`,
+	"\f", `\f`,
 )
 
 func writeString(w *writer, s string) error {
-	s = writeStringReplacer.Replace(s)
+	s = unescapeReplacer.Replace(s)
 	_, err := w.writer.WriteString(`"` + s + `"`)
 	return err
 }
@@ -32,7 +37,7 @@ func writeInteger(w *writer, i *big.Int) error {
 }
 
 func writeFloat(w *writer, f *big.Float) (err error) {
-	text := f.Text('g', -1)
+	text := f.Text('G', -1)
 	_, err = w.writer.WriteString(text)
 	if err == nil && !strings.ContainsAny(text, ".eE") {
 		_, err = w.writer.WriteString(".0")

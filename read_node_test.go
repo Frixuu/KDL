@@ -23,7 +23,7 @@ func TestReadsSimpleNode(t *testing.T) {
 		},
 	}, n)
 
-	_ = skipUntilNewLine(reader, true)
+	// previous readNode consumes the \n
 	n, err = readNode(reader)
 	assert.NoError(t, err)
 	assert.Equal(t, Node{

@@ -6,12 +6,20 @@ import (
 	"io"
 	"math/big"
 	"regexp"
-	"strconv"
 	"strings"
 	"unicode"
 )
 
-var quotedReplacer = strings.NewReplacer(`\/`, `/`, "\n", `\n`)
+var escapeReplacer = strings.NewReplacer(
+	`\/`, `/`,
+	`\\`, `\`,
+	`\"`, `"`,
+	`\n`, "\n",
+	`\r`, "\r",
+	`\t`, "\t",
+	`\b`, "\b",
+	`\f`, "\f",
+)
 
 func readQuotedString(r *reader) (string, error) {
 
@@ -20,7 +28,7 @@ func readQuotedString(r *reader) (string, error) {
 		return s, err
 	}
 
-	return strconv.Unquote(`"` + quotedReplacer.Replace(s) + `"`)
+	return escapeReplacer.Replace(s), nil
 }
 
 var errExpectedQuotedString = fmt.Errorf("%w: expected quoted string", ErrInvalidSyntax)
@@ -414,7 +422,7 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 
 	chars := make([]rune, 0, 16)
 	chars = append(chars, ch)
-	r.discardBytes(1)
+	r.discardRunes(1)
 
 	for {
 
@@ -441,7 +449,7 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 			return "", &errInvalidCharInBareIdent{ch: ch}
 		}
 
-		_, _ = r.readRune()
+		r.discardRunes(1)
 		chars = append(chars, ch)
 	}
 
@@ -527,7 +535,21 @@ func readMaybeTypeHint(r *reader) (Identifier, error) {
 	return "", errExpectedCloseHint
 }
 
-var errExpectedValue = fmt.Errorf("%w: expected value", ErrInvalidSyntax)
+type errExpectedValue struct {
+	found rune
+}
+
+func (e *errExpectedValue) Error() string {
+	return fmt.Sprintf(
+		"%s: expected value, got character '%s' which is not valid",
+		ErrInvalidSyntax.Error(),
+		string(e.found),
+	)
+}
+
+func (e *errExpectedValue) Unwrap() error {
+	return ErrInvalidSyntax
+}
 
 func readValue(r *reader) (Value, error) {
 
@@ -594,6 +616,6 @@ func readValue(r *reader) (Value, error) {
 		err := readNull(r)
 		return NewNullValue(hint), err
 	default:
-		return newInvalidValue(), errExpectedValue
+		return newInvalidValue(), &errExpectedValue{found: ch}
 	}
 }

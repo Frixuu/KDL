@@ -186,7 +186,7 @@ func TestReadsBareIdentifier(t *testing.T) {
 
 func TestReadsIdentifier(t *testing.T) {
 
-	reader := readerFromString(`foo "bar baz" radio r#"gaga"#`)
+	reader := readerFromString(`foo "bar baz" radio r#"gaga"# 😃 "😃" `)
 
 	ident, err, _ := readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
@@ -206,6 +206,16 @@ func TestReadsIdentifier(t *testing.T) {
 	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "gaga", ident)
+
+	_ = readUntilSignificant(reader)
+	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "😃", ident)
+
+	_ = readUntilSignificant(reader)
+	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "😃", ident)
 }
 
 func TestReadsTypeHint(t *testing.T) {

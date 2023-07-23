@@ -38,7 +38,7 @@ func (r *reader) lastRead() rune {
 }
 
 func (r *reader) discardRunes(count int) {
-	for i := 1; i < count; i++ {
+	for i := 0; i < count; i++ {
 		_, _ = r.readRune()
 	}
 }
