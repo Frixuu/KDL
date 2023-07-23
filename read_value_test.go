@@ -240,7 +240,7 @@ func TestReadsTypeHint(t *testing.T) {
 
 	reader = readerFromString("(aaaaa")
 	_, err = readMaybeTypeHint(reader)
-	assert.ErrorIs(t, err, io.EOF)
+	assert.ErrorIs(t, err, ErrUnexpectedEOF)
 }
 
 func TestReadsValue(t *testing.T) {
@@ -249,23 +249,23 @@ func TestReadsValue(t *testing.T) {
 
 	value, err := readValue(reader)
 	assert.NoError(t, err)
-	assert.EqualValues(t, NewBoolValue(true, noHint), value)
+	assert.EqualValues(t, NewBoolValue(true, NoHint()), value)
 
 	_ = readUntilSignificant(reader)
 	value, err = readValue(reader)
 	assert.NoError(t, err)
 	// different rounding mode
-	assert.EqualExportedValues(t, NewFloatValue(big.NewFloat(-3.5), hint("temp")), value)
+	assert.EqualExportedValues(t, NewFloatValue(big.NewFloat(-3.5), Hint("temp")), value)
 
 	_ = readUntilSignificant(reader)
 	value, err = readValue(reader)
 	assert.NoError(t, err)
-	assert.EqualValues(t, NewNullValue(hint("hey")), value)
+	assert.EqualValues(t, NewNullValue(Hint("hey")), value)
 
 	_ = readUntilSignificant(reader)
 	value, err = readValue(reader)
 	assert.NoError(t, err)
-	assert.EqualValues(t, NewStringValue("foo", noHint), value)
+	assert.EqualValues(t, NewStringValue("foo", NoHint()), value)
 
 	_ = readUntilSignificant(reader)
 	_, err = readValue(reader)

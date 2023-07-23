@@ -9,8 +9,6 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/samber/mo"
 )
 
 var escapeReplacer = strings.NewReplacer(
@@ -529,41 +527,44 @@ func readIdentifier(r *reader, stopMode identStopMode) (i Identifier, err error,
 }
 
 var errExpectedCloseHint = fmt.Errorf("%w: expected ) after type hint", ErrInvalidSyntax)
-var noHint = mo.None[Identifier]()
 
-func hint(name string) mo.Option[Identifier] {
-	return mo.Some(Identifier(name))
-}
-
-func readMaybeTypeHint(r *reader) (mo.Option[Identifier], error) {
+// readMaybeTypeHint reads an optional type hint, if one exists in the input.
+func readMaybeTypeHint(r *reader) (TypeHint, error) {
 
 	ch, err := r.peekRune()
 	if err != nil {
-		return noHint, err
+		// EOF expected to be handled by the caller
+		return NoHint(), err
 	}
 
 	if ch != '(' {
-		return noHint, nil
+		// No hint in the input
+		return NoHint(), nil
 	}
 
 	r.discardBytes(1)
 
-	id, err, _ := readIdentifier(r, stopModeCloseParen)
+	// An identifier should follow right after - no whitespace nor comments
+	ident, err, _ := readIdentifier(r, stopModeCloseParen)
 	if err != nil {
-		return noHint, err
+		return NoHint(), err
 	}
 
+	// The parenthesis also should close just after - no whitespace nor comments
 	ch, err = r.peekRune()
 	if err != nil {
-		return noHint, err
+		if errors.Is(err, io.EOF) {
+			return NoHint(), ErrUnexpectedEOF
+		}
+		return NoHint(), err
 	}
 
 	if ch == ')' {
 		r.discardBytes(1)
-		return mo.Some(id), nil
+		return Hint(string(ident)), nil
 	}
 
-	return noHint, errExpectedCloseHint
+	return NoHint(), errExpectedCloseHint
 }
 
 type errExpectedValue struct {

@@ -3,8 +3,6 @@ package kdl
 import (
 	"math/big"
 	"strings"
-
-	"github.com/samber/mo"
 )
 
 var unescapeReplacer = strings.NewReplacer(
@@ -84,22 +82,20 @@ func writeIdentifier(w *writer, i Identifier) (err error) {
 	return
 }
 
-func writeTypeHint(w *writer, hint mo.Option[Identifier]) (err error) {
+// writeTypeHint writes a type hint to the output, if the hint is present.
+func writeTypeHint(w *writer, hint TypeHint) error {
 
 	if hint.IsAbsent() {
 		return nil
 	}
 
-	err = w.writer.WriteByte('(')
-	if err != nil {
-		return
+	if err := w.writer.WriteByte('('); err != nil {
+		return err
 	}
 
-	err = writeIdentifier(w, hint.MustGet())
-	if err != nil {
-		return
+	if err := writeIdentifier(w, hint.MustGet()); err != nil {
+		return err
 	}
 
-	err = w.writer.WriteByte(')')
-	return
+	return w.writer.WriteByte(')')
 }

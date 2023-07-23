@@ -14,15 +14,15 @@ func TestDocumentWritesCorrectly(t *testing.T) {
 			{
 				Name: "abc",
 				Args: []Value{
-					NewFloatValue(big.NewFloat(2.0), noHint),
-					NewStringValue("foo", noHint),
+					NewFloatValue(big.NewFloat(2.0), NoHint()),
+					NewStringValue("foo", NoHint()),
 				},
 				Children: []Node{
 					{
 						Name: "def",
 						Props: map[Identifier]Value{
-							"zoom": NewStringValue("voom", noHint),
-							"quox": NewBoolValue(false, noHint),
+							"zoom": NewStringValue("voom", NoHint()),
+							"quox": NewBoolValue(false, NoHint()),
 						},
 					},
 				},

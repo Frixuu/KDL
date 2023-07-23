@@ -201,7 +201,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 			if errors.Is(err, io.EOF) {
 				if quoted {
 					if !discard {
-						dest.AddArg(NewStringValue(string(i), noHint))
+						dest.AddArg(NewStringValue(string(i), NoHint()))
 					}
 					return nil
 				}
@@ -210,7 +210,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 				if isValidValueTerminator(ch) {
 					if quoted {
 						if !discard {
-							dest.AddArg(NewStringValue(string(i), noHint))
+							dest.AddArg(NewStringValue(string(i), NoHint()))
 						}
 						return nil
 					}
