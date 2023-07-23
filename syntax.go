@@ -49,10 +49,10 @@ func isWhitespace(ch rune) bool {
 // in place of a node's name, type hint or a property key.
 type Identifier string
 
-var patternBareIdentifier = regexp.MustCompile(`^([^\/(){}<>;[\]=,"0-9\-+\s]|[\-+][^\/(){}<>;[\]=,"0-9\s])[^\/(){}<>;[\]=,"\s]*$`)
+var patternBareIdentifier = regexp.MustCompile(`^([^\/(){}<>;[\]=,"0-9\-+\s\\]|[\-+][^\/(){}<>;[\]=,"0-9\s\\])[^\/(){}<>;[\]=,"\s\\]*$`)
 
 func isAllowedBareIdentifier(s string) bool {
-	return !slices.Contains(keywords[:], s) && patternBareIdentifier.MatchString(s)
+	return patternBareIdentifier.MatchString(s) && !slices.Contains(keywords[:], s)
 }
 
 var charsNotInBareIdentifier = [...]rune{

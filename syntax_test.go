@@ -15,6 +15,7 @@ func TestAllowsValidBareIdentifiers(t *testing.T) {
 
 func TestDisallowsInvalidBareIdentifiers(t *testing.T) {
 	assert.False(t, isAllowedBareIdentifier("foo bar"))
+	assert.False(t, isAllowedBareIdentifier(`\foo`))
 	assert.False(t, isAllowedBareIdentifier("1337"))
 	assert.False(t, isAllowedBareIdentifier(`"quox"`))
 	assert.False(t, isAllowedBareIdentifier("true"))
