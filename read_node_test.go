@@ -59,3 +59,19 @@ func TestReadsLineContinuation(t *testing.T) {
 	assert.Equal(t, 1, len(n.Args))
 	assert.Equal(t, "bar", n.Args[0].AsString())
 }
+
+func TestReadsMultilineCommentAfterLineContinuation(t *testing.T) {
+	reader := readerFromString(`"foo" \ /*
+
+	*/
+	"bar" \ /*
+
+*/
+"baz"`)
+	n, err := readNode(reader)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "foo", n.Name)
+	assert.Equal(t, 2, len(n.Args))
+	assert.Equal(t, "bar", n.Args[0].AsString())
+	assert.Equal(t, "baz", n.Args[1].AsString())
+}

@@ -26,6 +26,9 @@ func readNodes(r *reader) (nodes []Node, err error) {
 			var ch rune
 			ch, err = r.peekRune()
 			if err != nil {
+				if errors.Is(err, io.EOF) && r.depth == 0 {
+					err = nil
+				}
 				return
 			}
 
@@ -255,7 +258,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 	return errUnexpectedTokenAfterValue
 }
 
-// skipUntilNewLine discards the reader to the next new line character.
+// skipUntilNewLine discards the reader to the next new line character OR EOF.
 //
 // If afterBreak is true, the reader is positioned after the newline break.
 // If it is false, the reader is positioned just before a newline rune. (singular, in case of CRLF)
@@ -276,6 +279,9 @@ func skipUntilNewLine(r *reader, afterBreak bool) error {
 
 		ch, err := r.peekRune()
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return err
 		}
 
@@ -292,10 +298,14 @@ func skipUntilNewLine(r *reader, afterBreak bool) error {
 	return nil
 }
 
+var errSignificantInCont = fmt.Errorf("%w: unexpected significant token in escline", ErrInvalidSyntax)
+
 // readUntilSignificant allows the provided reader to skip whitespace and comments.
 //
 // Note: this method will NOT skip over new lines.
 func readUntilSignificant(r *reader) error {
+
+	escapedLine := false
 
 outer:
 	for {
@@ -313,16 +323,14 @@ outer:
 		// Check for line continuation
 		if ch == '\\' {
 			r.discardBytes(1)
-			if err := skipUntilNewLine(r, true); err != nil {
-				return err
-			}
+			escapedLine = true
 			continue
 		}
 
 		// Check for single-line comments
 		if comment, err := r.isNext(charsStartComment[:]); comment && err == nil {
 			r.discardBytes(2)
-			return skipUntilNewLine(r, false)
+			return skipUntilNewLine(r, true)
 		}
 
 		// Check for multiline comments
@@ -361,6 +369,17 @@ outer:
 
 				r.discardBytes(1)
 			}
+		}
+
+		if escapedLine {
+			if isNewLine(ch) {
+				if err := skipUntilNewLine(r, true); err != nil {
+					return err
+				}
+				escapedLine = false
+				continue
+			}
+			return errSignificantInCont
 		}
 
 		return nil
