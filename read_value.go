@@ -250,12 +250,12 @@ var (
 	errFailedToParseFloat = fmt.Errorf("%w (could not parse float)", ErrInvalidNumValue)
 )
 
-type Number struct {
+type number struct {
 	Type  TypeTag
 	Value interface{}
 }
 
-func readNumber(r *reader) (Number, error) {
+func readNumber(r *reader) (number, error) {
 
 	length := 0
 	var bytes []byte
@@ -270,7 +270,7 @@ func readNumber(r *reader) (Number, error) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return Number{}, err
+			return number{}, err
 		}
 
 		ch := rune(bytes[len(bytes)-1])
@@ -285,7 +285,7 @@ func readNumber(r *reader) (Number, error) {
 
 	str := strOriginal
 	if len(str) == 0 {
-		return Number{}, ErrEmptyNumber
+		return number{}, ErrEmptyNumber
 	}
 
 	sign := 0
@@ -304,29 +304,29 @@ func readNumber(r *reader) (Number, error) {
 		if strings.HasPrefix(str, "0b") {
 			base = 2
 			if !patternBinary.MatchString(strOriginal) {
-				return Number{}, ErrBadBinary
+				return number{}, ErrBadBinary
 			}
 		} else if strings.HasPrefix(str, "0o") {
 			base = 8
 			if !patternOctal.MatchString(strOriginal) {
-				return Number{}, ErrBadOctal
+				return number{}, ErrBadOctal
 			}
 		} else if strings.HasPrefix(str, "0x") {
 			base = 16
 			if !patternHex.MatchString(strOriginal) {
-				return Number{}, ErrBadHex
+				return number{}, ErrBadHex
 			}
 		}
 	}
 
 	if base == 10 {
 		if !patternDecimal.MatchString(strOriginal) {
-			return Number{}, ErrBadDecimal
+			return number{}, ErrBadDecimal
 		}
 	} else {
 		str = str[2:]
 		if strings.ContainsRune(str, '.') {
-			return Number{}, ErrSepsOnlyInDecimals
+			return number{}, ErrSepsOnlyInDecimals
 		}
 	}
 
@@ -338,19 +338,19 @@ func readNumber(r *reader) (Number, error) {
 	if base == 10 && strings.ContainsAny(str, ".eE") {
 		f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
 		if err != nil {
-			return Number{}, errFailedToParseFloat
+			return number{}, errFailedToParseFloat
 		}
-		return Number{Type: TypeFloat, Value: f}, nil
+		return number{Type: TypeFloat, Value: f}, nil
 	}
 
 	// Numbers in other bases are guaranteed to be integers
 	i := new(big.Int)
 	_, ok := i.SetString(str, base)
 	if ok {
-		return Number{Type: TypeInteger, Value: i}, nil
+		return number{Type: TypeInteger, Value: i}, nil
 	}
 
-	return Number{}, errFailedToParseInt
+	return number{}, errFailedToParseInt
 }
 
 type errInvalidBareIdent struct {
