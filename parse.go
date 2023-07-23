@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-//go:generate go run tools/generate_test_cases/generate.go
+//go:generate go run internal/tools/generate_test_cases/generate.go
 
 func ParseBufReader(br *bufio.Reader) (Document, error) {
 	doc := NewDocument()
