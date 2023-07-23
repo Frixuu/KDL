@@ -6,11 +6,10 @@ import (
 )
 
 type reader struct {
-	reader  *bufio.Reader
-	line    int
-	pos     int
-	current rune
-	depth   int
+	reader *bufio.Reader
+	line   int
+	pos    int
+	depth  int
 }
 
 func wrapReader(r *bufio.Reader) *reader {
@@ -26,15 +25,7 @@ func (r *reader) readRune() (rune, error) {
 		r.pos++
 	}
 
-	if err == nil {
-		r.current = ch
-	}
-
 	return ch, err
-}
-
-func (r *reader) lastRead() rune {
-	return r.current
 }
 
 func (r *reader) discardRunes(count int) {
@@ -70,23 +61,6 @@ func (r *reader) peekRune() (rune, error) {
 
 	err = r.reader.UnreadRune()
 	return ch, err
-}
-
-func (r *reader) unreadRune() error {
-	err := r.reader.UnreadRune()
-	if err != nil {
-		return err
-	}
-
-	peek, _ := r.reader.Peek(1)
-	var b byte = '\n'
-	if peek[0] == b {
-		r.line--
-	} else {
-		r.pos--
-	}
-
-	return nil
 }
 
 func (r *reader) isNext(expected []byte) (bool, error) {
