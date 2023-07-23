@@ -97,6 +97,7 @@ func readRawString(r *reader) (string, error) {
 
 	ch, err := r.peekRune()
 	if err != nil {
+		// EOF expected to be handled by the caller
 		return "", err
 	}
 
@@ -153,6 +154,7 @@ func readRawString(r *reader) (string, error) {
 			// To return, we must now read the exact number of '#' characters
 			// that we started the raw string with
 			isJustAfterDoublequotes = true
+			closingPoundCount = 0
 			continue
 		}
 
