@@ -33,7 +33,8 @@ func isNewLine(ch rune) bool {
 
 // charsWhitespace are all the runes that should be treated as whitespace.
 var charsWhitespace = [...]rune{
-	0x9, 0x20, 0xa0, 0x1680,
+	0x20,
+	0x9, 0xa0, 0x1680,
 	0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200a,
 	0x202f, 0x205f,
 	0x3000,
@@ -44,6 +45,8 @@ func isWhitespace(ch rune) bool {
 	return slices.Contains(charsWhitespace[:], ch)
 }
 
+// Identifier is a fancy name for a string
+// in place of a node's name, type hint or a property key.
 type Identifier string
 
 var patternBareIdentifier = regexp.MustCompile(`^([^\/(){}<>;[\]=,"0-9\-+\s]|[\-+][^\/(){}<>;[\]=,"0-9\s])[^\/(){}<>;[\]=,"\s]*$`)

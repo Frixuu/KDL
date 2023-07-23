@@ -69,7 +69,7 @@ func writeValue(w *writer, v *Value) error {
 	case TypeNull:
 		return writeNull(w)
 	default:
-		return ErrInvalidTypeTag
+		return errInvalidTypeTag
 	}
 }
 
