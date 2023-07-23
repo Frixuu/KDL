@@ -33,7 +33,20 @@ func writeBool(w *writer, b bool) error {
 }
 
 func writeInteger(w *writer, i *big.Int) error {
-	_, err := w.writer.WriteString(i.Text(10))
+	text := i.Text(10)
+
+	if strings.HasSuffix(text, "000000") {
+		exp := 6
+		for {
+			if text[len(text)-exp-1] != '0' {
+				break
+			}
+			exp++
+		}
+		text = text[:len(text)-exp] + "E+" + strconv.Itoa(exp)
+	}
+
+	_, err := w.writer.WriteString(text)
 	return err
 }
 

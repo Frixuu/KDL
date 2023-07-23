@@ -120,14 +120,15 @@ func expectInt(t *testing.T, r *reader, v int64) {
 }
 
 func TestReadsNumberDecimal(t *testing.T) {
-	reader := readerFromString("0.0 0 4 +2 -6 1_33_7 4e3 7e-2 -1.1e-2")
+	reader := readerFromString("0.0 0 4 +2 -6 1_33_7 4e3 2e+3 7e-2 -1.1e-2")
 	expectFloat(t, reader, 0.0)
 	expectInt(t, reader, 0)
 	expectInt(t, reader, 4)
 	expectInt(t, reader, 2)
 	expectInt(t, reader, -6)
 	expectInt(t, reader, 1337)
-	expectFloat(t, reader, 4000.0)
+	expectInt(t, reader, 4000)
+	expectInt(t, reader, 2000)
 	expectFloat(t, reader, 0.07)
 	expectFloat(t, reader, -0.011)
 }

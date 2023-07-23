@@ -342,12 +342,28 @@ func readNumber(r *reader) (number, error) {
 	}
 
 	str = strings.ReplaceAll(str, "_", "")
-	if base == 10 && strings.ContainsAny(str, ".eE") {
-		f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
-		if err != nil {
-			return number{}, errFailedToParseFloat
+	if base == 10 {
+		if strings.ContainsRune(str, '.') {
+			f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
+			if err != nil {
+				return number{}, errFailedToParseFloat
+			}
+			return number{Type: TypeFloat, Value: f}, nil
 		}
-		return number{Type: TypeFloat, Value: f}, nil
+		if strings.ContainsAny(str, "eE") {
+			str = strings.ToUpper(str)
+			man, exp, _ := strings.Cut(str, "E")
+			if strings.HasPrefix(exp, "-") {
+				f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
+				if err != nil {
+					return number{}, errFailedToParseFloat
+				}
+				return number{Type: TypeFloat, Value: f}, nil
+			} else {
+				e, _ := strconv.Atoi(exp)
+				str = man + strings.Repeat("0", e)
+			}
+		}
 	}
 
 	// Numbers in other bases are guaranteed to be integers
