@@ -1,7 +1,9 @@
 package kdl
 
 import (
+	"math"
 	"math/big"
+	"strconv"
 	"strings"
 )
 
@@ -35,13 +37,74 @@ func writeInteger(w *writer, i *big.Int) error {
 	return err
 }
 
-func writeFloat(w *writer, f *big.Float) (err error) {
-	text := f.Text('G', -1)
-	_, err = w.writer.WriteString(text)
-	if err == nil && !strings.ContainsAny(text, ".eE") {
-		_, err = w.writer.WriteString(".0")
+func writeFloatNoExponent(w *writer, f *big.Float) (err error) {
+	text := f.Text('f', 14)
+
+	hadZeroes := false
+	for {
+		zero := strings.HasSuffix(text, "00")
+		if !zero {
+			break
+		}
+		hadZeroes = true
+		text = text[:len(text)-1]
 	}
+
+	if hadZeroes && !strings.HasSuffix(text, ".0") {
+		text = text[:len(text)-1]
+	}
+
+	_, err = w.writer.WriteString(text)
 	return
+}
+
+var bigFloatZero = big.NewFloat(0.0)
+
+func writeFloat(w *writer, f *big.Float) error {
+
+	if f.Cmp(bigFloatZero) == 0 {
+		_, err := w.writer.WriteString("0.0")
+		return err
+	}
+
+	if f.IsInf() {
+		_, err := w.writer.WriteString("Inf")
+		return err
+	}
+
+	// Mode 'G' switches to sci mode later than we would like
+	// and has troubles with choosing the right precision,
+	// so we decide on form on our own
+
+	d, _ := f.Float64()
+	abs := math.Abs(d)
+	if abs > 0.1_000_000 && abs < 1_000_000_000 {
+		return writeFloatNoExponent(w, f)
+	}
+
+	text := f.Text('E', 15)
+	man, exp, ok := strings.Cut(text, "E")
+	if !ok {
+		return writeFloatNoExponent(w, f)
+	}
+
+	manf, err := strconv.ParseFloat(man, 64)
+	if err != nil {
+		return err
+	}
+
+	err = writeFloatNoExponent(w, big.NewFloat(manf))
+	if err != nil {
+		return err
+	}
+
+	err = w.writer.WriteByte('E')
+	if err != nil {
+		return err
+	}
+
+	_, err = w.writer.WriteString(exp)
+	return err
 }
 
 func writeNull(w *writer) error {
