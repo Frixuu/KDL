@@ -154,7 +154,7 @@ func readNode(r *reader) (Node, error) {
 					node.AddChild(children[i])
 				}
 			}
-			return node, nil
+			r.discardBytes(1)
 		} else {
 			err = readArgOrProp(r, &node, slashdash)
 			if err != nil {
