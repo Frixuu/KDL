@@ -7,7 +7,6 @@ import (
 
 var unescapeReplacer = strings.NewReplacer(
 	`\`, `\\`,
-	`/`, `\/`,
 	`"`, `\"`,
 	"\n", `\n`,
 	"\r", `\r`,
