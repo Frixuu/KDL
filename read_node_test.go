@@ -50,3 +50,12 @@ func TestReadsNodeWithChildren(t *testing.T) {
 	assert.Equal(t, 2, len(n.Children))
 	assert.Equal(t, "baz", n.Children[1].Args[0].AsString())
 }
+
+func TestReadsLineContinuation(t *testing.T) {
+	reader := readerFromString("\"foo\" \\\n\"bar\"")
+	n, err := readNode(reader)
+	assert.NoError(t, err)
+	assert.EqualValues(t, "foo", n.Name)
+	assert.Equal(t, 1, len(n.Args))
+	assert.Equal(t, "bar", n.Args[0].AsString())
+}
