@@ -6,8 +6,11 @@ import (
 	"io"
 )
 
-var errUnexpectedSemicolon = fmt.Errorf("%w: unexpected ';' not terminating a node", ErrInvalidSyntax)
-var errUnexpectedRightBracket = fmt.Errorf("%w: unexpected top-level '}'", ErrInvalidSyntax)
+var (
+	errUnexpectedSemicolon    = fmt.Errorf("%w: unexpected ';' not terminating a node", ErrInvalidSyntax)
+	errUnexpectedRightBracket = fmt.Errorf("%w: unexpected top-level '}'", ErrInvalidSyntax)
+	errUnexpectedLineCont     = fmt.Errorf("%w: unexpected top-level '\\'", ErrInvalidSyntax)
+)
 
 func readNodes(r *reader) (nodes []Node, err error) {
 
@@ -15,7 +18,7 @@ func readNodes(r *reader) (nodes []Node, err error) {
 
 	for {
 		for {
-			err = readUntilSignificant(r)
+			err = readUntilSignificant(r, false)
 			if err != nil {
 				if errors.Is(err, io.EOF) && r.depth == 0 {
 					err = nil
@@ -42,6 +45,9 @@ func readNodes(r *reader) (nodes []Node, err error) {
 					}
 					r.discardBytes(1)
 					return
+				} else if ch == '\\' {
+					err = errUnexpectedLineCont
+					return
 				}
 				break
 			}
@@ -62,7 +68,7 @@ func readNodes(r *reader) (nodes []Node, err error) {
 			r.discardBytes(2)
 		}
 
-		err = readUntilSignificant(r)
+		err = readUntilSignificant(r, true)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				err = ErrUnexpectedSlashdash
@@ -101,7 +107,7 @@ func readNode(r *reader) (Node, error) {
 
 	for {
 
-		err := readUntilSignificant(r)
+		err := readUntilSignificant(r, true)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return node, nil
@@ -114,7 +120,7 @@ func readNode(r *reader) (Node, error) {
 			r.discardBytes(2)
 		}
 
-		err = readUntilSignificant(r)
+		err = readUntilSignificant(r, true)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return node, ErrUnexpectedSlashdash
@@ -303,7 +309,7 @@ var errSignificantInCont = fmt.Errorf("%w: unexpected significant token in escli
 // readUntilSignificant allows the provided reader to skip whitespace and comments.
 //
 // Note: this method will NOT skip over new lines.
-func readUntilSignificant(r *reader) error {
+func readUntilSignificant(r *reader, insideNode bool) error {
 
 	escapedLine := false
 
@@ -321,7 +327,7 @@ outer:
 		}
 
 		// Check for line continuation
-		if ch == '\\' {
+		if insideNode && ch == '\\' {
 			r.discardBytes(1)
 			escapedLine = true
 			continue

@@ -102,7 +102,7 @@ func TestReadsNull(t *testing.T) {
 }
 
 func expectFloat(t *testing.T, r *reader, v float64) {
-	_ = readUntilSignificant(r)
+	_ = readUntilSignificant(r, true)
 	n, err := readNumber(r)
 	assert.NoError(t, err)
 	assert.Equal(t, TypeFloat, n.Type)
@@ -111,7 +111,7 @@ func expectFloat(t *testing.T, r *reader, v float64) {
 }
 
 func expectInt(t *testing.T, r *reader, v int64) {
-	_ = readUntilSignificant(r)
+	_ = readUntilSignificant(r, true)
 	n, err := readNumber(r)
 	assert.NoError(t, err)
 	assert.Equal(t, TypeInteger, n.Type)
@@ -193,27 +193,27 @@ func TestReadsIdentifier(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", ident)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "bar baz", ident)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "radio", ident)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "gaga", ident)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "😃", ident)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	ident, err, _ = readIdentifier(reader, stopModeFreestanding)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "😃", ident)
@@ -252,23 +252,23 @@ func TestReadsValue(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, NewBoolValue(true, NoHint()), value)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	value, err = readValue(reader)
 	assert.NoError(t, err)
 	// different rounding mode
 	assert.EqualExportedValues(t, NewFloatValue(big.NewFloat(-3.5), Hint("temp")), value)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	value, err = readValue(reader)
 	assert.NoError(t, err)
 	assert.EqualValues(t, NewNullValue(Hint("hey")), value)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	value, err = readValue(reader)
 	assert.NoError(t, err)
 	assert.EqualValues(t, NewStringValue("foo", NoHint()), value)
 
-	_ = readUntilSignificant(reader)
+	_ = readUntilSignificant(reader, true)
 	_, err = readValue(reader)
 	assert.Error(t, err)
 }
