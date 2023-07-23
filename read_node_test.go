@@ -75,3 +75,12 @@ func TestReadsMultilineCommentAfterLineContinuation(t *testing.T) {
 	assert.Equal(t, "bar", n.Args[0].AsString())
 	assert.Equal(t, "baz", n.Args[1].AsString())
 }
+
+func TestReadsRTL(t *testing.T) {
+	input := `الطاب الطاب=1 الطاب=2`
+	reader := readerFromString(input)
+	n, err := readNode(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(n.Props))
+	assert.EqualValues(t, 2, n.Props["الطاب"].AsInteger().Int64())
+}
