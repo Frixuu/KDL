@@ -3,8 +3,10 @@ package kdl
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"strings"
 
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
 
@@ -44,27 +46,25 @@ func writeProps(w *writer, n *Node) error {
 	}
 
 	// Sort properties alphabetically
-	props := toPairs(p)
-	slices.SortFunc(props, func(a, b pair[Identifier, Value]) bool {
-		return strings.Compare(string(a.key), string(b.key)) < 0
-	})
+	keys := maps.Keys(p)
+	slices.Sort(keys)
 
-	for i := range props {
+	for i, key := range keys {
 
-		prop := &props[i]
+		value := p[key]
 
-		if err := writeIdentifier(w, prop.key); err != nil {
+		if err := writeIdentifier(w, key); err != nil {
 			return err
 		}
 		if err := w.writer.WriteByte('='); err != nil {
 			return err
 		}
-		if err := writeValue(w, &prop.value); err != nil {
+		if err := writeValue(w, &value); err != nil {
 			return err
 		}
 
 		// Join properties with a single space
-		if i+1 < len(p) {
+		if i+1 < len(keys) {
 			if err := writeSpace(w); err != nil {
 				return err
 			}
@@ -160,16 +160,21 @@ func writeDocument(w *writer, d *Document) error {
 	return nil
 }
 
+// Write writes the Document to an io.Writer.
+func (d *Document) Write(w io.Writer) error {
+	bw := writer{writer: bufio.NewWriter(w)}
+	if err := writeDocument(&bw, d); err != nil {
+		return err
+	}
+	if err := bw.writer.WriteByte('\n'); err != nil {
+		return err
+	}
+	return bw.writer.Flush()
+}
+
+// WriteString marshals the Document to a new string.
 func (d *Document) WriteString() (string, error) {
 	var buf bytes.Buffer
-	w := writer{writer: bufio.NewWriter(&buf)}
-	err := writeDocument(&w, d)
-	if err != nil {
-		return "", err
-	}
-	if err := w.writer.WriteByte('\n'); err != nil {
-		return "", err
-	}
-	w.writer.Flush()
-	return buf.String(), nil
+	err := d.Write(&buf)
+	return buf.String(), err
 }
