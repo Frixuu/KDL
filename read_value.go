@@ -32,31 +32,36 @@ var escapeReplacer = strings.NewReplacer(
 
 func readQuotedString(r *reader) (string, error) {
 
-	s, err := readQuotedStringInner(r)
+	str, escapes, err := readQuotedStringInner(r)
 	if err != nil {
-		return s, err
+		return str, err
 	}
 
-	s = unicodeEscapePattern.ReplaceAllStringFunc(s, unicodeUnescapeFunc)
-	s = escapeReplacer.Replace(s)
-	return s, nil
+	if escapes {
+		str = unicodeEscapePattern.ReplaceAllStringFunc(str, unicodeUnescapeFunc)
+		str = escapeReplacer.Replace(str)
+	}
+
+	return str, nil
 }
 
 var errUnexpectedEOFInsideString = fmt.Errorf("%w: did you forget to close a string?", ErrUnexpectedEOF)
 var errExpectedQuotedString = fmt.Errorf("%w: expected quoted string", ErrInvalidSyntax)
 
-func readQuotedStringInner(r *reader) (string, error) {
-
-	count := 1
+func readQuotedStringInner(r *reader) (string, bool, error) {
 
 	start, err := r.readRune()
 	if err != nil {
-		return "", err
+		// EOF expected to be handled by the caller
+		return "", false, err
 	}
 
 	if start != '"' {
-		return "", errExpectedQuotedString
+		return "", false, errExpectedQuotedString
 	}
+
+	count := 1
+	hasEscapes := false
 
 	for {
 
@@ -65,18 +70,20 @@ func readQuotedStringInner(r *reader) (string, error) {
 			if errors.Is(err, io.EOF) {
 				err = errUnexpectedEOFInsideString
 			}
-			return string(bytes), err
+			return string(bytes), hasEscapes, err
 		}
 
 		ch := bytes[len(bytes)-1]
 		if ch == '\\' {
+
+			hasEscapes = true
 
 			bs, err := r.peekBytes(count + 1)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					err = errUnexpectedEOFInsideString
 				}
-				return string(bytes), err
+				return string(bytes), hasEscapes, err
 			}
 
 			escaped := bs[len(bs)-1]
@@ -89,7 +96,7 @@ func readQuotedStringInner(r *reader) (string, error) {
 
 			toRet := string(bytes[:len(bytes)-1])
 			r.discardBytes(count)
-			return toRet, nil
+			return toRet, hasEscapes, nil
 		}
 
 		count++
