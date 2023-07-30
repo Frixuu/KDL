@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -25,7 +27,16 @@ type ErrWithPosition struct {
 
 // Error formats an error message.
 func (e *ErrWithPosition) Error() string {
-	return fmt.Sprintf("%s [line %d, column %d]", e.Err.Error(), e.Line, e.Column)
+	var s strings.Builder
+	innerMsg := e.Err.Error()
+	s.Grow(len(innerMsg) + 30)
+	s.WriteString(innerMsg)
+	s.WriteString(" [line ")
+	s.WriteString(strconv.Itoa(e.Line))
+	s.WriteString(", column ")
+	s.WriteString(strconv.Itoa(e.Column))
+	s.WriteString("]")
+	return s.String()
 }
 
 // Unwrap returns the original error.

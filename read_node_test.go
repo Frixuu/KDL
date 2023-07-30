@@ -12,7 +12,7 @@ func TestReadsSimpleNode(t *testing.T) {
 
 	reader := readerFromString("foo \"bar\" (abc)2\n(name)baz \"quox\"")
 
-	n, err := readNode(reader)
+	n, err := readNode(&reader)
 	assert.NoError(t, err)
 	assert.Equal(t, Node{
 		Name:  "foo",
@@ -24,7 +24,7 @@ func TestReadsSimpleNode(t *testing.T) {
 	}, n)
 
 	// previous readNode consumes the \n
-	n, err = readNode(reader)
+	n, err = readNode(&reader)
 	assert.NoError(t, err)
 	assert.Equal(t, Node{
 		Name:     "baz",
@@ -33,7 +33,7 @@ func TestReadsSimpleNode(t *testing.T) {
 		Args:     []Value{NewStringValue("quox", NoHint())},
 	}, n)
 
-	_, err = readNode(reader)
+	_, err = readNode(&reader)
 	assert.ErrorIs(t, err, io.EOF)
 }
 
@@ -44,7 +44,7 @@ func TestReadsNodeWithChildren(t *testing.T) {
 	mirror "bar"; mirror "baz"
 }`)
 
-	n, err := readNode(reader)
+	n, err := readNode(&reader)
 	assert.NoError(t, err)
 	assert.Equal(t, "git", n.Props["type"].RawValue)
 	assert.Equal(t, 2, len(n.Children))
@@ -53,7 +53,7 @@ func TestReadsNodeWithChildren(t *testing.T) {
 
 func TestReadsLineContinuation(t *testing.T) {
 	reader := readerFromString("\"foo\" \\\n\"bar\"")
-	n, err := readNode(reader)
+	n, err := readNode(&reader)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", n.Name)
 	assert.Equal(t, 1, len(n.Args))
@@ -68,7 +68,7 @@ func TestReadsMultilineCommentAfterLineContinuation(t *testing.T) {
 
 */
 "baz"`)
-	n, err := readNode(reader)
+	n, err := readNode(&reader)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", n.Name)
 	assert.Equal(t, 2, len(n.Args))
@@ -79,7 +79,7 @@ func TestReadsMultilineCommentAfterLineContinuation(t *testing.T) {
 func TestReadsRTL(t *testing.T) {
 	input := `الطاب الطاب=1 الطاب=2`
 	reader := readerFromString(input)
-	n, err := readNode(reader)
+	n, err := readNode(&reader)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(n.Props))
 	assert.EqualValues(t, 2, n.Props["الطاب"].AsInteger().Int64())

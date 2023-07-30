@@ -50,7 +50,7 @@ var errExpectedQuotedString = fmt.Errorf("%w: expected quoted string", ErrInvali
 
 func readQuotedStringInner(r *reader) (string, bool, error) {
 
-	start, err := r.readRune()
+	start, err := r.readByte()
 	if err != nil {
 		// EOF expected to be handled by the caller
 		return "", false, err
@@ -150,8 +150,9 @@ func readRawString(r *reader) (string, error) {
 	for {
 
 		if isJustAfterDoublequotes && leadingPoundCount == closingPoundCount {
+			s := string(bytes[contentStart : len(bytes)-leadingPoundCount-1])
 			r.discardBytes(length)
-			return string(bytes[contentStart : len(bytes)-leadingPoundCount-1]), nil
+			return s, nil
 		}
 
 		length++
@@ -182,7 +183,8 @@ func readRawString(r *reader) (string, error) {
 var ErrExpectedString = fmt.Errorf("%w: expected string", ErrInvalidSyntax)
 
 func readString(r *reader) (string, error) {
-	ch, err := r.peekRune()
+
+	ch, err := r.peekByte()
 	if err != nil {
 		return "", err
 	}
@@ -205,7 +207,7 @@ func readBool(r *reader) (bool, error) {
 
 	var expected []byte
 
-	start, err := r.peekRune()
+	start, err := r.peekByte()
 	if err != nil {
 		return false, err
 	}
@@ -349,16 +351,15 @@ func readNumber(r *reader) (number, error) {
 		}
 	}
 
-	if sign < 0 {
-		str = "-" + str
-	}
-
 	str = strings.ReplaceAll(str, "_", "")
 	if base == 10 {
 		if strings.ContainsRune(str, '.') {
 			f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
 			if err != nil {
 				return number{}, errFailedToParseFloat
+			}
+			if sign < 0 {
+				f = f.Neg(f)
 			}
 			return number{Type: TypeFloat, Value: f}, nil
 		}
@@ -369,6 +370,9 @@ func readNumber(r *reader) (number, error) {
 				f, _, err := big.ParseFloat(str, 10, 53, big.AwayFromZero)
 				if err != nil {
 					return number{}, errFailedToParseFloat
+				}
+				if sign < 0 {
+					f = f.Neg(f)
 				}
 				return number{Type: TypeFloat, Value: f}, nil
 			} else {
@@ -382,6 +386,9 @@ func readNumber(r *reader) (number, error) {
 	i := new(big.Int)
 	_, ok := i.SetString(str, base)
 	if ok {
+		if sign < 0 {
+			i = i.Neg(i)
+		}
 		return number{Type: TypeInteger, Value: i}, nil
 	}
 
@@ -577,7 +584,7 @@ func readMaybeTypeHint(r *reader) (TypeHint, error) {
 		return NoHint(), nil
 	}
 
-	r.discardBytes(1)
+	r.discardByte()
 
 	// An identifier should follow right after - no whitespace nor comments
 	ident, err, _ := readIdentifier(r, stopModeCloseParen)
@@ -595,7 +602,7 @@ func readMaybeTypeHint(r *reader) (TypeHint, error) {
 	}
 
 	if ch == ')' {
-		r.discardBytes(1)
+		r.discardByte()
 		return Hint(string(ident)), nil
 	}
 

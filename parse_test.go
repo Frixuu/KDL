@@ -6,26 +6,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParsesSimpleDocument(t *testing.T) {
-
-	input := `
-		name "John Smith"
-		planet "Earth"
-		children {
-			daughter "Alice" age=3
-			daughter "Laura" --social-media=(lie)false
-			son "Michael" {
-				likes {
-					dinosaurs
-					"fire trucks"
-				}
+const inputSimple string = `
+	name "John Smith"
+	planet "Earth"
+	children {
+		daughter "Alice" age=3
+		daughter "Laura" --social-media=(lie)false
+		son "Michael" {
+			likes {
+				dinosaurs
+				"fire trucks"
 			}
 		}
-	`
+	}
+`
 
-	doc, err := ParseString(input)
+func TestParsesSimpleDocument(t *testing.T) {
+	doc, err := ParseString(inputSimple)
 	assert.NoError(t, err)
-
 	assert.Equal(t, "John Smith", doc.Nodes[0].Args[0].AsString())
 	assert.Equal(t, 1, len(doc.Nodes[2].Children[1].Props))
+}
+
+func BenchmarkParseSimpleDocument(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = ParseString(inputSimple)
+	}
 }

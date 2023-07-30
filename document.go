@@ -7,10 +7,16 @@ type Document struct {
 
 // NewDocument creates a new Document.
 func NewDocument() Document {
-	return Document{Nodes: make([]Node, 0)}
+	nodes := make([]Node, 0)
+	return Document{Nodes: nodes}
 }
 
-// AddNode adds a node to this Document.
-func (d *Document) AddNode(n Node) {
+// nodeParent is an object that can have many children nodes, ie. Document or a Node.
+type nodeParent interface {
+	AddChild(n Node)
+}
+
+// AddChild adds a node to this Document.
+func (d *Document) AddChild(n Node) {
 	d.Nodes = append(d.Nodes, n)
 }

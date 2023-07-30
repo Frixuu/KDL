@@ -6,7 +6,7 @@ import (
 )
 
 // TypeTag discriminates between Value types.
-type TypeTag int
+type TypeTag byte
 
 const (
 	TypeInvalid TypeTag = iota // The described Value is in an invalid state.

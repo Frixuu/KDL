@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 )
 
 //go:generate go run internal/tools/generate_test_cases/generate.go
@@ -13,9 +14,9 @@ func ParseBufReader(br *bufio.Reader) (Document, error) {
 	doc := NewDocument()
 	r := wrapReader(br)
 
-	nodes, err := readNodes(r)
+	nodes, err := readNodes(&r)
 	if err != nil {
-		return doc, addErrPosInfo(err, r)
+		return doc, addErrPosInfo(err, &r)
 	}
 
 	doc.Nodes = nodes
@@ -33,8 +34,9 @@ func ParseBytes(b []byte) (Document, error) {
 }
 
 func ParseString(s string) (Document, error) {
-	sb := bytes.NewBufferString(s)
-	return ParseReader(sb)
+	sr := strings.NewReader(s)
+	wr := bufio.NewReaderSize(sr, len(s))
+	return ParseBufReader(wr)
 }
 
 func ParseFile(path string) (Document, error) {

@@ -18,9 +18,14 @@ var unescapeReplacer = strings.NewReplacer(
 )
 
 func writeString(w *writer, s string) error {
-	s = unescapeReplacer.Replace(s)
-	_, err := w.writer.WriteString(`"` + s + `"`)
-	return err
+
+	if err := w.writer.WriteByte('"'); err != nil {
+		return err
+	}
+	if _, err := w.writer.WriteString(unescapeReplacer.Replace(s)); err != nil {
+		return err
+	}
+	return w.writer.WriteByte('"')
 }
 
 func writeBool(w *writer, b bool) error {

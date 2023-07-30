@@ -43,7 +43,7 @@ func readNodes(r *reader) (nodes []Node, err error) {
 					if r.depth == 0 {
 						err = errUnexpectedRightBracket
 					}
-					r.discardBytes(1)
+					r.discardByte()
 					return
 				} else if ch == '\\' {
 					err = errUnexpectedLineCont
@@ -140,7 +140,7 @@ func readNode(r *reader) (Node, error) {
 			}
 			return node, nil
 		} else if ch == ';' {
-			r.discardBytes(1)
+			r.discardByte()
 			if slashdash {
 				return node, ErrUnexpectedSlashdash
 			}
@@ -151,7 +151,7 @@ func readNode(r *reader) (Node, error) {
 			}
 			return node, nil
 		} else if ch == '{' {
-			r.discardBytes(1)
+			r.discardByte()
 			r.depth++
 			children, err := readNodes(r)
 			if err != nil {
@@ -163,7 +163,7 @@ func readNode(r *reader) (Node, error) {
 					node.AddChild(children[i])
 				}
 			}
-			r.discardBytes(1)
+			r.discardByte()
 		} else {
 			err = readArgOrProp(r, &node, slashdash)
 			if err != nil {
@@ -225,7 +225,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 					}
 					return errUnexpectedBareIdentifier
 				} else if ch == '=' {
-					r.discardBytes(1)
+					r.discardByte()
 					v, err := readValue(r)
 					if err != nil {
 						return err
@@ -278,7 +278,7 @@ func skipUntilNewLine(r *reader, afterBreak bool) error {
 				r.discardBytes(2)
 			} else {
 				// Leave the LF only to simplify later checks
-				r.discardBytes(1)
+				r.discardByte()
 			}
 			break
 		}
@@ -293,12 +293,12 @@ func skipUntilNewLine(r *reader, afterBreak bool) error {
 
 		if isNewLine(ch) {
 			if afterBreak {
-				r.discardBytes(1)
+				r.discardByte()
 			}
 			break
 		}
 
-		r.discardBytes(1)
+		r.discardByte()
 	}
 
 	return nil
@@ -328,7 +328,7 @@ outer:
 
 		// Check for line continuation
 		if insideNode && ch == '\\' {
-			r.discardBytes(1)
+			r.discardByte()
 			escapedLine = true
 			continue
 		}
@@ -373,7 +373,7 @@ outer:
 					}
 				}
 
-				r.discardBytes(1)
+				r.discardByte()
 			}
 		}
 

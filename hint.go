@@ -1,5 +1,7 @@
 package kdl
 
+import "errors"
+
 // TypeHint is an optional Identifier associated with a Value.
 type TypeHint struct {
 	hint    Identifier
@@ -34,10 +36,12 @@ func (h TypeHint) Get() (Identifier, bool) {
 	return h.hint, h.present
 }
 
+var errTypeHintAbsent = errors.New("called MustGet on an absent kdl.TypeHint")
+
 // MustGet returns the inner type hint or panics, if it does not exist.
 func (h TypeHint) MustGet() Identifier {
 	if !h.present {
-		panic("called MustGet on an absent kdl.TypeHint")
+		panic(errTypeHintAbsent)
 	}
 	return h.hint
 }
