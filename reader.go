@@ -3,10 +3,19 @@ package kdl
 import (
 	"bufio"
 	"bytes"
+	"io"
 )
 
+type innerReader interface {
+	io.Reader
+	io.ByteScanner
+	io.RuneScanner
+	Discard(n int) (discarded int, err error)
+	Peek(n int) (view []byte, err error)
+}
+
 type reader struct {
-	reader *bufio.Reader
+	reader innerReader
 	line   int
 	pos    int
 	depth  int
@@ -77,55 +86,10 @@ func (r *reader) discardByte() {
 	_, _ = r.readByte()
 }
 
-func (r *reader) readBytes(count int) (bytes []byte, err error) {
-
-	bytes = make([]byte, count)
-	wasCR := false
-
-	for count > 0 {
-
-		var n int
-		n, err = r.reader.Read(bytes)
-		if err != nil {
-			return
-		}
-
-		for i := 0; i < n; i++ {
-
-			b := bytes[i]
-			if b == '\n' && !wasCR {
-				r.line++
-				r.pos = 0
-				wasCR = false
-				continue
-			}
-
-			if b == '\r' {
-				wasCR = true
-				r.line++
-				r.pos = 0
-				continue
-			}
-
-			wasCR = false
-			r.pos++
-		}
-
-		count -= n
-	}
-
-	return
-}
-
 func (r *reader) discardBytes(count int) {
 
-	bytes, err := r.peekBytes(count)
-	if err != nil {
-		_, _ = r.readBytes(count)
-		return
-	}
-
 	wasCR := false
+	bytes, _ := r.peekBytes(count)
 	for _, b := range bytes {
 
 		if b == '\n' && !wasCR {

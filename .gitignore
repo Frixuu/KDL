@@ -3,3 +3,4 @@ __debug_bin
 kdl_test.go
 *.out
 *.test
+bench.txt

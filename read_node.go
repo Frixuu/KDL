@@ -10,6 +10,7 @@ var (
 	errUnexpectedSemicolon    = fmt.Errorf("%w: unexpected ';' not terminating a node", ErrInvalidSyntax)
 	errUnexpectedRightBracket = fmt.Errorf("%w: unexpected top-level '}'", ErrInvalidSyntax)
 	errUnexpectedLineCont     = fmt.Errorf("%w: unexpected top-level '\\'", ErrInvalidSyntax)
+	errUnexpectedSlashdash    = fmt.Errorf("%w: unexpected slashdash", ErrInvalidSyntax)
 )
 
 func readNodes(r *reader) (nodes []Node, err error) {
@@ -71,7 +72,7 @@ func readNodes(r *reader) (nodes []Node, err error) {
 		err = readUntilSignificant(r, true)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				err = ErrUnexpectedSlashdash
+				err = errUnexpectedSlashdash
 			}
 			return
 		}
@@ -123,7 +124,7 @@ func readNode(r *reader) (Node, error) {
 		err = readUntilSignificant(r, true)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return node, ErrUnexpectedSlashdash
+				return node, errUnexpectedSlashdash
 			}
 			return node, err
 		}
@@ -136,18 +137,18 @@ func readNode(r *reader) (Node, error) {
 		if isNewLine(ch) {
 			r.discardRunes(1)
 			if slashdash {
-				return node, ErrUnexpectedSlashdash
+				return node, errUnexpectedSlashdash
 			}
 			return node, nil
 		} else if ch == ';' {
 			r.discardByte()
 			if slashdash {
-				return node, ErrUnexpectedSlashdash
+				return node, errUnexpectedSlashdash
 			}
 			return node, nil
 		} else if ch == '}' {
 			if slashdash {
-				return node, ErrUnexpectedSlashdash
+				return node, errUnexpectedSlashdash
 			}
 			return node, nil
 		} else if ch == '{' {
@@ -173,24 +174,11 @@ func readNode(r *reader) (Node, error) {
 	}
 }
 
-var errUnexpectedBareIdentifier = fmt.Errorf("%w: unexpected bare identifier", ErrInvalidSyntax)
-var errUnexpectedTokenAfterValue = fmt.Errorf("%w: unexpected token after value", ErrInvalidSyntax)
-
-type errUnexpectedTokenAfterIdentifier struct {
-	ch rune
-}
-
-func (e *errUnexpectedTokenAfterIdentifier) Error() string {
-	return fmt.Sprintf(
-		"%s: unexpected token '%s' after identifier",
-		ErrInvalidSyntax.Error(),
-		string(e.ch),
-	)
-}
-
-func (e *errUnexpectedTokenAfterIdentifier) Unwrap() error {
-	return ErrInvalidSyntax
-}
+var (
+	errUnexpectedBareIdentifier       = fmt.Errorf("%w: unexpected bare identifier", ErrInvalidSyntax)
+	errUnexpectedTokenAfterValue      = fmt.Errorf("%w: unexpected token after value", ErrInvalidSyntax)
+	errUnexpectedTokenAfterIdentifier = fmt.Errorf("%w: unexpected token after identifier", ErrInvalidSyntax)
+)
 
 // readArgOrProp reads an argument or a property
 // and adds them to the provided Node definition.
@@ -235,7 +223,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 					}
 					return nil
 				}
-				return &errUnexpectedTokenAfterIdentifier{ch: ch}
+				return errUnexpectedTokenAfterIdentifier
 			}
 			return err
 		}

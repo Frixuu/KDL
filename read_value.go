@@ -107,7 +107,7 @@ var errExpectedRawString = fmt.Errorf("%w: expected raw string", ErrInvalidSynta
 
 func readRawString(r *reader) (string, error) {
 
-	ch, err := r.peekRune()
+	ch, err := r.peekByte()
 	if err != nil {
 		// EOF expected to be handled by the caller
 		return "", err
@@ -258,17 +258,18 @@ var (
 	patternOctal   = regexp.MustCompile(`^[-+]?0o[0-7][_0-7]*$`)
 	patternBinary  = regexp.MustCompile(`^[-+]?0b[01][_01]*$`)
 
-	ErrBadDecimal = fmt.Errorf("%w (decimal does not match pattern)", ErrInvalidNumValue)
-	ErrBadHex     = fmt.Errorf("%w (hex does not match pattern)", ErrInvalidNumValue)
-	ErrBadOctal   = fmt.Errorf("%w (octal does not match pattern)", ErrInvalidNumValue)
-	ErrBadBinary  = fmt.Errorf("%w (binary does not match pattern)", ErrInvalidNumValue)
+	errInvalidNumValue = fmt.Errorf("%w: bad numeric value", ErrInvalidSyntax)
 
-	ErrEmptyNumber         = fmt.Errorf("%w (number is empty)", ErrInvalidNumValue)
-	ErrSepsOnlyInDecimals  = fmt.Errorf("%w (separators available only in numbers base 10)", ErrInvalidNumValue)
-	ErrTooManySepsInNumber = fmt.Errorf("%w (too many decimal separators)", ErrInvalidNumValue)
+	errBadDecimal = fmt.Errorf("%w (decimal does not match pattern)", errInvalidNumValue)
+	errBadHex     = fmt.Errorf("%w (hex does not match pattern)", errInvalidNumValue)
+	errBadOctal   = fmt.Errorf("%w (octal does not match pattern)", errInvalidNumValue)
+	errBadBinary  = fmt.Errorf("%w (binary does not match pattern)", errInvalidNumValue)
 
-	errFailedToParseInt   = fmt.Errorf("%w (could not parse integer)", ErrInvalidNumValue)
-	errFailedToParseFloat = fmt.Errorf("%w (could not parse float)", ErrInvalidNumValue)
+	errEmptyNumber        = fmt.Errorf("%w (number is empty)", errInvalidNumValue)
+	errSepsOnlyInDecimals = fmt.Errorf("%w (separators available only in numbers base 10)", errInvalidNumValue)
+
+	errFailedToParseInt   = fmt.Errorf("%w (could not parse integer)", errInvalidNumValue)
+	errFailedToParseFloat = fmt.Errorf("%w (could not parse float)", errInvalidNumValue)
 )
 
 type number struct {
@@ -306,7 +307,7 @@ func readNumber(r *reader) (number, error) {
 
 	str := strOriginal
 	if len(str) == 0 {
-		return number{}, ErrEmptyNumber
+		return number{}, errEmptyNumber
 	}
 
 	sign := 0
@@ -325,29 +326,29 @@ func readNumber(r *reader) (number, error) {
 		if strings.HasPrefix(str, "0b") {
 			base = 2
 			if !patternBinary.MatchString(strOriginal) {
-				return number{}, ErrBadBinary
+				return number{}, errBadBinary
 			}
 		} else if strings.HasPrefix(str, "0o") {
 			base = 8
 			if !patternOctal.MatchString(strOriginal) {
-				return number{}, ErrBadOctal
+				return number{}, errBadOctal
 			}
 		} else if strings.HasPrefix(str, "0x") {
 			base = 16
 			if !patternHex.MatchString(strOriginal) {
-				return number{}, ErrBadHex
+				return number{}, errBadHex
 			}
 		}
 	}
 
 	if base == 10 {
 		if !patternDecimal.MatchString(strOriginal) {
-			return number{}, ErrBadDecimal
+			return number{}, errBadDecimal
 		}
 	} else {
 		str = str[2:]
 		if strings.ContainsRune(str, '.') {
-			return number{}, ErrSepsOnlyInDecimals
+			return number{}, errSepsOnlyInDecimals
 		}
 	}
 
@@ -395,53 +396,11 @@ func readNumber(r *reader) (number, error) {
 	return number{}, errFailedToParseInt
 }
 
-type errInvalidBareIdent struct {
-	ident string
-}
-
-func (e *errInvalidBareIdent) Error() string {
-	return fmt.Sprintf(
-		"%s: \"%s\" is not a valid bare identifier",
-		ErrInvalidSyntax.Error(),
-		e.ident,
-	)
-}
-
-func (e *errInvalidBareIdent) Unwrap() error {
-	return ErrInvalidSyntax
-}
-
-type errInvalidCharInBareIdent struct {
-	ch rune
-}
-
-func (e *errInvalidCharInBareIdent) Error() string {
-	return fmt.Sprintf(
-		"%s: '%s' is not a valid character in a bare identifier",
-		ErrInvalidSyntax.Error(),
-		string(e.ch),
-	)
-}
-
-func (e *errInvalidCharInBareIdent) Unwrap() error {
-	return ErrInvalidSyntax
-}
-
-type errInvalidInitialCharInBareIdent struct {
-	ch rune
-}
-
-func (e *errInvalidInitialCharInBareIdent) Error() string {
-	return fmt.Sprintf(
-		"%s: '%s' is not a valid initial character for a bare identifier",
-		ErrInvalidSyntax.Error(),
-		string(e.ch),
-	)
-}
-
-func (e *errInvalidInitialCharInBareIdent) Unwrap() error {
-	return ErrInvalidSyntax
-}
+var (
+	errInvalidBareIdent              = fmt.Errorf("%w: invalid bare identifier", ErrInvalidSyntax)
+	errInvalidCharInBareIdent        = fmt.Errorf("%w (illegal character)", errInvalidBareIdent)
+	errInvalidInitialCharInBareIdent = fmt.Errorf("%w (does not start with a valid character)", errInvalidBareIdent)
+)
 
 type identStopMode int
 
@@ -460,7 +419,7 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 	}
 
 	if !isAllowedInitialCharacter(ch) {
-		return "", &errInvalidInitialCharInBareIdent{ch: ch}
+		return "", errInvalidInitialCharInBareIdent
 	}
 
 	lengthBytes := 0
@@ -507,7 +466,7 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 			} else if stopMode == stopModeSemicolon && ch == ';' {
 				break
 			}
-			return "", &errInvalidCharInBareIdent{ch: ch}
+			return "", errInvalidCharInBareIdent
 		}
 
 		lengthBytes += (runeRemLen + 1)
@@ -519,9 +478,11 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 	}
 
 	ident := string(b)
-	// Validate, could still be a keyword
-	if !isAllowedBareIdentifier(ident) {
-		return "", &errInvalidBareIdent{ident: ident}
+	if isKeyword(ident) {
+		return "", errInvalidBareIdent
+	}
+	if startsWithDigit(ident) {
+		return "", errInvalidBareIdent
 	}
 
 	r.discardBytes(lengthBytes)
@@ -562,7 +523,7 @@ func readIdentifier(r *reader, stopMode identStopMode) (i Identifier, err error,
 	if isAllowedInitialCharacter(ch) {
 		i, err = readBareIdentifier(r, stopMode)
 	} else {
-		err = &errInvalidInitialCharInBareIdent{ch: ch}
+		err = errInvalidInitialCharInBareIdent
 	}
 
 	return
@@ -573,7 +534,7 @@ var errExpectedCloseHint = fmt.Errorf("%w: expected ) after type hint", ErrInval
 // readMaybeTypeHint reads an optional type hint, if one exists in the input.
 func readMaybeTypeHint(r *reader) (TypeHint, error) {
 
-	ch, err := r.peekRune()
+	ch, err := r.peekByte()
 	if err != nil {
 		// EOF expected to be handled by the caller
 		return NoHint(), err
@@ -593,7 +554,7 @@ func readMaybeTypeHint(r *reader) (TypeHint, error) {
 	}
 
 	// The parenthesis also should close just after - no whitespace nor comments
-	ch, err = r.peekRune()
+	ch, err = r.peekByte()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return NoHint(), ErrUnexpectedEOF
@@ -609,21 +570,7 @@ func readMaybeTypeHint(r *reader) (TypeHint, error) {
 	return NoHint(), errExpectedCloseHint
 }
 
-type errExpectedValue struct {
-	found rune
-}
-
-func (e *errExpectedValue) Error() string {
-	return fmt.Sprintf(
-		"%s: expected value, got character '%s' which is not valid",
-		ErrInvalidSyntax.Error(),
-		string(e.found),
-	)
-}
-
-func (e *errExpectedValue) Unwrap() error {
-	return ErrInvalidSyntax
-}
+var errExpectedValue = fmt.Errorf("%w: expected value", ErrInvalidSyntax)
 
 func readValue(r *reader) (Value, error) {
 
@@ -649,7 +596,7 @@ func readValue(r *reader) (Value, error) {
 		case TypeInteger:
 			return NewIntegerValue(n.Value.(*big.Int), hint), nil
 		default:
-			return newInvalidValue(), ErrInvalidNumValue
+			return newInvalidValue(), errInvalidNumValue
 		}
 	}
 
@@ -678,7 +625,7 @@ func readValue(r *reader) (Value, error) {
 		case TypeInteger:
 			return NewIntegerValue(n.Value.(*big.Int), hint), nil
 		default:
-			return newInvalidValue(), ErrInvalidNumValue
+			return newInvalidValue(), errInvalidNumValue
 		}
 	case 'r':
 		v, err := readRawString(r)
@@ -690,6 +637,6 @@ func readValue(r *reader) (Value, error) {
 		err := readNull(r)
 		return NewNullValue(hint), err
 	default:
-		return newInvalidValue(), &errExpectedValue{found: ch}
+		return newInvalidValue(), errExpectedValue
 	}
 }

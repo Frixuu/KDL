@@ -187,9 +187,6 @@ func TestReadsNumberBinary(t *testing.T) {
 
 func TestReadsBareIdentifier(t *testing.T) {
 
-	var errInvalidInitial *errInvalidInitialCharInBareIdent
-	var errInvalidIdent *errInvalidBareIdent
-
 	reader := readerFromString("abc")
 	id, err := readBareIdentifier(&reader, stopModeFreestanding)
 	assert.NoError(t, err)
@@ -202,7 +199,7 @@ func TestReadsBareIdentifier(t *testing.T) {
 
 	reader = readerFromString("012")
 	_, err = readBareIdentifier(&reader, stopModeFreestanding)
-	assert.ErrorAs(t, err, &errInvalidInitial)
+	assert.ErrorIs(t, err, errInvalidInitialCharInBareIdent)
 
 	reader = readerFromString("-cool")
 	id, err = readBareIdentifier(&reader, stopModeFreestanding)
@@ -211,11 +208,11 @@ func TestReadsBareIdentifier(t *testing.T) {
 
 	reader = readerFromString("-12")
 	_, err = readBareIdentifier(&reader, stopModeFreestanding)
-	assert.ErrorAs(t, err, &errInvalidIdent)
+	assert.ErrorIs(t, err, errInvalidBareIdent)
 
 	reader = readerFromString(`" `)
 	_, err = readBareIdentifier(&reader, stopModeFreestanding)
-	assert.ErrorAs(t, err, &errInvalidInitial)
+	assert.ErrorIs(t, err, errInvalidInitialCharInBareIdent)
 }
 
 func TestReadsIdentifier(t *testing.T) {

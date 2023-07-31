@@ -3,12 +3,17 @@ package kdl
 import (
 	"regexp"
 	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/exp/slices"
 )
 
 // keywords are reserved symbols that cannot be used as bare identifiers.
 var keywords = [...]string{"true", "false", "null"}
+
+func isKeyword(s string) bool {
+	return slices.Contains(keywords[:], s)
+}
 
 // charsSlashDash represents a sequence of bytes
 // that tells the parser to discard the immediately following
@@ -49,10 +54,40 @@ func isWhitespace(ch rune) bool {
 // in place of a node's name, type hint or a property key.
 type Identifier string
 
+func startsWithDigit(s string) bool {
+	if len(s) < 1 {
+		return false
+	}
+
+	r, size := utf8.DecodeRuneInString(s)
+	if unicode.IsDigit(r) {
+		return true
+	}
+
+	if r == '-' || r == '+' {
+		if len(s) <= size {
+			return false
+		}
+		n := s[size]
+		if n >= '0' && n <= '9' {
+			return true
+		}
+
+		if n >= 128 {
+			r, _ = utf8.DecodeRuneInString(s[size:])
+			return unicode.IsDigit(r)
+		}
+
+		return false
+	}
+
+	return false
+}
+
 var patternBareIdentifier = regexp.MustCompile(`^([^\/(){}<>;[\]=,"0-9\-+\s\\]|[\-+][^\/(){}<>;[\]=,"0-9\s\\])[^\/(){}<>;[\]=,"\s\\]*$`)
 
 func isAllowedBareIdentifier(s string) bool {
-	return patternBareIdentifier.MatchString(s) && !slices.Contains(keywords[:], s)
+	return !isKeyword(s) && patternBareIdentifier.MatchString(s)
 }
 
 var charsNotInBareIdentifier = [...]rune{
