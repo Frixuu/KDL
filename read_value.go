@@ -180,7 +180,7 @@ func readRawString(r *reader) (string, error) {
 	}
 }
 
-var ErrExpectedString = fmt.Errorf("%w: expected string", ErrInvalidSyntax)
+var errExpectedString = fmt.Errorf("%w: expected string", ErrInvalidSyntax)
 
 func readString(r *reader) (string, error) {
 
@@ -195,7 +195,7 @@ func readString(r *reader) (string, error) {
 	case 'r':
 		return readRawString(r)
 	default:
-		return "", ErrExpectedString
+		return "", errExpectedString
 	}
 }
 
@@ -235,7 +235,7 @@ func readBool(r *reader) (bool, error) {
 }
 
 var bytesNull = [...]byte{'n', 'u', 'l', 'l'}
-var ErrExpectedNull = fmt.Errorf("%w: expected null", ErrInvalidSyntax)
+var errExpectedNull = fmt.Errorf("%w: expected null", ErrInvalidSyntax)
 
 func readNull(r *reader) error {
 
@@ -249,7 +249,7 @@ func readNull(r *reader) error {
 		return nil
 	}
 
-	return ErrExpectedNull
+	return errExpectedNull
 }
 
 var (
@@ -273,8 +273,8 @@ var (
 )
 
 type number struct {
-	Type  TypeTag
 	Value interface{}
+	Type  TypeTag
 }
 
 func readNumber(r *reader) (number, error) {

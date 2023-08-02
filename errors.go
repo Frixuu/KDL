@@ -8,13 +8,19 @@ import (
 )
 
 var (
-	ErrInvalidSyntax   = errors.New("invalid syntax")
+	// ErrInvalidSyntax is a base error for when
+	// a parser comes across a document that is not spec-compliant.
+	ErrInvalidSyntax = errors.New("invalid syntax")
+	// ErrInvalidEncoding is a base error for when
+	// an invalid UTF8 byte sequence is encountered.
 	ErrInvalidEncoding = errors.New("document is not UTF-8 encoded")
-	ErrUnexpectedEOF   = io.ErrUnexpectedEOF
+	// ErrUnexpectedEOF is a base error for when
+	// the data abruptly ends e.g. inside a string.
+	ErrUnexpectedEOF = io.ErrUnexpectedEOF
 )
 
 // ErrWithPosition wraps an error,
-// adding information where in the document did it happen.
+// adding information where in the document did it occur.
 type ErrWithPosition struct {
 	Err    error // The original error.
 	Line   int   // Line where the error occurred, 1-indexed.
@@ -23,9 +29,15 @@ type ErrWithPosition struct {
 
 // Error formats an error message.
 func (e *ErrWithPosition) Error() string {
+
+	innerMsg := "null"
+	err := e.Err
+	if err != nil {
+		innerMsg = err.Error()
+	}
+
 	var s strings.Builder
-	innerMsg := e.Err.Error()
-	s.Grow(len(innerMsg) + 30)
+	s.Grow(len(innerMsg) + 24)
 	s.WriteString(innerMsg)
 	s.WriteString(" [line ")
 	s.WriteString(strconv.Itoa(e.Line))

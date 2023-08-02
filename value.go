@@ -22,9 +22,9 @@ var errInvalidTypeTag = errors.New("value has invalid type tag")
 
 // Value can be used either as an argument or a property to a Node.
 type Value struct {
-	Type     TypeTag
-	TypeHint TypeHint
 	RawValue interface{}
+	TypeHint TypeHint
+	Type     TypeTag
 }
 
 // NewNullValue constructs a Value that holds a null.
