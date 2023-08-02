@@ -1,9 +1,9 @@
 package kdl
 
 import (
-	"errors"
 	"fmt"
 	"io"
+	"unicode/utf8"
 )
 
 var (
@@ -15,13 +15,13 @@ var (
 
 func readNodes(r *reader) (nodes []Node, err error) {
 
-	nodes = make([]Node, 0, 4)
+	nodes = make([]Node, 0, 3)
 
 	for {
 		for {
 			err = readUntilSignificant(r, false)
 			if err != nil {
-				if errors.Is(err, io.EOF) && r.depth == 0 {
+				if err == io.EOF && r.depth == 0 {
 					err = nil
 				}
 				return
@@ -30,7 +30,7 @@ func readNodes(r *reader) (nodes []Node, err error) {
 			var ch rune
 			ch, err = r.peekRune()
 			if err != nil {
-				if errors.Is(err, io.EOF) && r.depth == 0 {
+				if err == io.EOF && r.depth == 0 {
 					err = nil
 				}
 				return
@@ -71,7 +71,7 @@ func readNodes(r *reader) (nodes []Node, err error) {
 
 		err = readUntilSignificant(r, true)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				err = errUnexpectedSlashdash
 			}
 			return
@@ -110,7 +110,7 @@ func readNode(r *reader) (Node, error) {
 
 		err := readUntilSignificant(r, true)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				return node, nil
 			}
 			return node, err
@@ -123,7 +123,7 @@ func readNode(r *reader) (Node, error) {
 
 		err = readUntilSignificant(r, true)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				return node, errUnexpectedSlashdash
 			}
 			return node, err
@@ -195,7 +195,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 		if err == nil {
 			// Identifier read successfully.
 			ch, err := r.peekRune()
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				if quoted {
 					if !discard {
 						dest.AddArg(NewStringValue(string(i), NoHint()))
@@ -240,7 +240,7 @@ func readArgOrProp(r *reader, dest *Node, discard bool) error {
 
 	ch, err := r.peekRune()
 
-	if errors.Is(err, io.EOF) || (err == nil && isValidValueTerminator(ch)) {
+	if err == io.EOF || (err == nil && isValidValueTerminator(ch)) {
 		if !discard {
 			dest.AddArg(v)
 		}
@@ -273,7 +273,7 @@ func skipUntilNewLine(r *reader, afterBreak bool) error {
 
 		ch, err := r.peekRune()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				return nil
 			}
 			return err
@@ -310,12 +310,12 @@ outer:
 		}
 
 		if isWhitespace(ch) {
-			r.discardRunes(1)
+			r.discardBytes(utf8.RuneLen(ch))
 			continue
 		}
 
 		// Check for line continuation
-		if insideNode && ch == '\\' {
+		if ch == '\\' && insideNode {
 			r.discardByte()
 			escapedLine = true
 			continue

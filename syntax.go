@@ -118,7 +118,7 @@ func isRuneAllowedInBareIdentifier(ch rune) bool {
 
 // isAllowedInitialCharacter checks if a bare identifier is allowed to start with this rune.
 func isAllowedInitialCharacter(ch rune) bool {
-	return !unicode.IsDigit(ch) && isRuneAllowedInBareIdentifier(ch)
+	return isRuneAllowedInBareIdentifier(ch) && !unicode.IsDigit(ch)
 }
 
 func isValidValueTerminator(ch rune) bool {

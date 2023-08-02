@@ -1,7 +1,7 @@
 package kdl
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
 	"io"
 	"math/big"
@@ -10,6 +10,9 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
+
+	"golang.org/x/exp/slices"
 )
 
 var unicodeEscapePattern = regexp.MustCompile(`\\u\{([0-9a-fA-F]{1,6})\}`)
@@ -67,7 +70,7 @@ func readQuotedStringInner(r *reader) (string, bool, error) {
 
 		bytes, err := r.peekBytes(count)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				err = errUnexpectedEOFInsideString
 			}
 			return string(bytes), hasEscapes, err
@@ -80,7 +83,7 @@ func readQuotedStringInner(r *reader) (string, bool, error) {
 
 			bs, err := r.peekBytes(count + 1)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
+				if err == io.EOF {
 					err = errUnexpectedEOFInsideString
 				}
 				return string(bytes), hasEscapes, err
@@ -253,18 +256,25 @@ func readNull(r *reader) error {
 }
 
 var (
-	patternDecimal = regexp.MustCompile(`^[-+]?[0-9][_0-9]*(\.[0-9][_0-9]*)?([eE][-+]?[0-9][_0-9]*)?$`)
-	patternHex     = regexp.MustCompile(`^[-+]?0x[0-9a-fA-F][_0-9a-fA-F]*$`)
-	patternOctal   = regexp.MustCompile(`^[-+]?0o[0-7][_0-7]*$`)
-	patternBinary  = regexp.MustCompile(`^[-+]?0b[01][_01]*$`)
 
-	errInvalidNumValue = fmt.Errorf("%w: bad numeric value", ErrInvalidSyntax)
+	// Note: Patterns below do not support signs before the number: we're stripping them first
 
-	errBadDecimal = fmt.Errorf("%w (decimal does not match pattern)", errInvalidNumValue)
-	errBadHex     = fmt.Errorf("%w (hex does not match pattern)", errInvalidNumValue)
-	errBadOctal   = fmt.Errorf("%w (octal does not match pattern)", errInvalidNumValue)
+	patternDecimal = regexp.MustCompile(`^[0-9][_0-9]*(\.[0-9][_0-9]*)?([eE][-+]?[0-9][_0-9]*)?$`)
+	errBadDecimal  = fmt.Errorf("%w (decimal does not match pattern)", errInvalidNumValue)
+
+	patternHex = regexp.MustCompile(`^0x[0-9a-fA-F][_0-9a-fA-F]*$`)
+	errBadHex  = fmt.Errorf("%w (hex does not match pattern)", errInvalidNumValue)
+	prefixHex  = []byte{'0', 'x'}
+
+	patternOctal = regexp.MustCompile(`^0o[0-7][_0-7]*$`)
+	errBadOctal  = fmt.Errorf("%w (octal does not match pattern)", errInvalidNumValue)
+	prefixOctal  = []byte{'0', 'o'}
+
+	patternBinary = regexp.MustCompile(`^0b[01][_01]*$`)
 	errBadBinary  = fmt.Errorf("%w (binary does not match pattern)", errInvalidNumValue)
+	prefixBinary  = []byte{'0', 'b'}
 
+	errInvalidNumValue    = fmt.Errorf("%w: bad numeric value", ErrInvalidSyntax)
 	errEmptyNumber        = fmt.Errorf("%w (number is empty)", errInvalidNumValue)
 	errSepsOnlyInDecimals = fmt.Errorf("%w (separators available only in numbers base 10)", errInvalidNumValue)
 
@@ -280,77 +290,77 @@ type number struct {
 func readNumber(r *reader) (number, error) {
 
 	length := 0
-	var bytes []byte
+	var data []byte
 	var err error
 
 	for {
 
 		length++
 
-		bytes, err = r.peekBytes(length)
+		data, err = r.peekBytes(length)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				break
 			}
 			return number{}, err
 		}
 
-		ch := rune(bytes[len(bytes)-1])
+		ch := rune(data[len(data)-1])
 		if ch == ';' || ch == '/' || unicode.IsSpace(ch) {
-			bytes = bytes[0 : len(bytes)-1]
+			data = data[0 : len(data)-1]
 			break
 		}
 	}
 
-	strOriginal := string(bytes)
-	r.discardBytes(length - 1)
-
-	str := strOriginal
-	if len(str) == 0 {
+	if len(data) == 0 {
 		return number{}, errEmptyNumber
 	}
 
 	sign := 0
-	if str[0] == '-' {
+	if data[0] == '-' {
 		sign = -1
-	} else if str[0] == '+' {
+	} else if data[0] == '+' {
 		sign = 1
 	}
 
 	if sign != 0 {
-		str = str[1:]
+		data = data[1:]
 	}
 
 	base := 10
-	if len(str) > 2 {
-		if strings.HasPrefix(str, "0b") {
+	if len(data) > 2 {
+		maybeBasePrefix := data[0:2]
+		if bytes.Equal(maybeBasePrefix, prefixBinary) {
 			base = 2
-			if !patternBinary.MatchString(strOriginal) {
+			if !patternBinary.Match(data) {
 				return number{}, errBadBinary
 			}
-		} else if strings.HasPrefix(str, "0o") {
+		} else if bytes.Equal(maybeBasePrefix, prefixOctal) {
 			base = 8
-			if !patternOctal.MatchString(strOriginal) {
+			if !patternOctal.Match(data) {
 				return number{}, errBadOctal
 			}
-		} else if strings.HasPrefix(str, "0x") {
+		} else if bytes.Equal(maybeBasePrefix, prefixHex) {
 			base = 16
-			if !patternHex.MatchString(strOriginal) {
+			if !patternHex.Match(data) {
 				return number{}, errBadHex
 			}
 		}
 	}
 
 	if base == 10 {
-		if !patternDecimal.MatchString(strOriginal) {
+		if !patternDecimal.Match(data) {
 			return number{}, errBadDecimal
 		}
 	} else {
-		str = str[2:]
-		if strings.ContainsRune(str, '.') {
+		data = data[2:]
+		if slices.Contains(data, '.') {
 			return number{}, errSepsOnlyInDecimals
 		}
 	}
+
+	str := string(data)
+	r.discardBytes(length - 1)
 
 	str = strings.ReplaceAll(str, "_", "")
 	if base == 10 {
@@ -427,7 +437,7 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 
 		b, err := r.peekBytes(lengthBytes + 1)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				break
 			}
 			return "", err
@@ -442,7 +452,7 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 		if runeRemLen > 0 {
 			b, err = r.peekBytes(lengthBytes + runeRemLen + 1)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
+				if err == io.EOF {
 					return "", ErrUnexpectedEOF
 				}
 				return "", err
@@ -477,7 +487,8 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 		return "", err
 	}
 
-	ident := string(b)
+	// Unsafe string to avoid allocations if this was not a valid identifier
+	ident := unsafe.String(unsafe.SliceData(b), len(b))
 	if isKeyword(ident) {
 		return "", errInvalidBareIdent
 	}
@@ -485,7 +496,10 @@ func readBareIdentifier(r *reader, stopMode identStopMode) (Identifier, error) {
 		return "", errInvalidBareIdent
 	}
 
+	// Actually make a copy now
+	ident = string(b)
 	r.discardBytes(lengthBytes)
+
 	return Identifier(ident), nil
 }
 
@@ -556,7 +570,7 @@ func readMaybeTypeHint(r *reader) (TypeHint, error) {
 	// The parenthesis also should close just after - no whitespace nor comments
 	ch, err = r.peekByte()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
+		if err == io.EOF {
 			return NoHint(), ErrUnexpectedEOF
 		}
 		return NoHint(), err

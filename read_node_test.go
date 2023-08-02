@@ -15,8 +15,7 @@ func TestReadsSimpleNode(t *testing.T) {
 	n, err := readNode(&reader)
 	assert.NoError(t, err)
 	assert.Equal(t, Node{
-		Name:  "foo",
-		Props: map[Identifier]Value{},
+		Name: "foo",
 		Args: []Value{
 			NewStringValue("bar", NoHint()),
 			NewIntegerValue(big.NewInt(2), Hint("abc")),
@@ -29,7 +28,6 @@ func TestReadsSimpleNode(t *testing.T) {
 	assert.Equal(t, Node{
 		Name:     "baz",
 		TypeHint: Hint("name"),
-		Props:    map[Identifier]Value{},
 		Args:     []Value{NewStringValue("quox", NoHint())},
 	}, n)
 
