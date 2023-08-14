@@ -1,13 +1,11 @@
 package kdl
 
 import (
-	"bufio"
 	"bytes"
 	"io"
 )
 
 type innerReader interface {
-	io.Reader
 	io.ByteScanner
 	io.RuneScanner
 	Discard(n int) (discarded int, err error)
@@ -21,7 +19,7 @@ type reader struct {
 	depth  int
 }
 
-func wrapReader(r *bufio.Reader) reader {
+func wrapReader(r innerReader) reader {
 	return reader{reader: r, line: 1, pos: 0}
 }
 

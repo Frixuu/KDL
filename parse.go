@@ -10,7 +10,7 @@ import (
 
 //go:generate go run internal/tools/generate_test_cases/generate.go
 
-func parse(br *bufio.Reader) (Document, error) {
+func parse(br innerReader) (Document, error) {
 	doc := NewDocument()
 	r := wrapReader(br)
 
@@ -29,14 +29,14 @@ func ParseReader(r io.Reader) (Document, error) {
 }
 
 func ParseBytes(b []byte) (Document, error) {
-	bb := bytes.NewBuffer(b)
+	bb := bytes.NewReader(b)
 	return ParseReader(bb)
 }
 
 func ParseString(s string) (Document, error) {
 	sr := strings.NewReader(s)
-	wr := bufio.NewReaderSize(sr, len(s))
-	return parse(wr)
+	br := bufio.NewReader(sr)
+	return parse(br)
 }
 
 func ParseFile(path string) (Document, error) {
