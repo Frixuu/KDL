@@ -19,12 +19,12 @@ type marshalContext struct {
 
 var errCannotMarshalType = errors.New("cannot marshal type (only structs and maps are supported)")
 
-type ErrCycleDetected struct {
+type errMarshalCycleDetected struct {
 	chain []reflect.Value
 	d     reflect.Value
 }
 
-func (e *ErrCycleDetected) Error() string {
+func (e *errMarshalCycleDetected) Error() string {
 
 	d := e.d
 	chain := e.chain
@@ -51,17 +51,17 @@ func (e *ErrCycleDetected) Error() string {
 	return b.String()
 }
 
-func Marshal(v any) ([]byte, error) {
+func marshal(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	var data []byte
-	err := MarshalWriter(v, &buf)
+	err := marshalWriter(v, &buf)
 	if err != nil {
 		data = buf.Bytes()
 	}
 	return data, err
 }
 
-func MarshalWriter(v any, w io.Writer) error {
+func marshalWriter(v any, w io.Writer) error {
 
 	doc := NewDocument()
 
@@ -77,7 +77,7 @@ func MarshalWriter(v any, w io.Writer) error {
 
 func tryPushChain(c *marshalContext, v reflect.Value) error {
 	if slices.Contains(c.chain, v) {
-		return &ErrCycleDetected{chain: c.chain, d: v}
+		return &errMarshalCycleDetected{chain: c.chain, d: v}
 	}
 	c.chain = append(c.chain, v)
 	return nil

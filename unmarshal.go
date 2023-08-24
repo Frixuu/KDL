@@ -1,5 +1,5 @@
 package kdl
 
-func Unmarshal(data []byte, dst interface{}) error {
+func unmarshal(data []byte, dst interface{}) error {
 	return nil
 }
