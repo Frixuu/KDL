@@ -37,8 +37,8 @@ func NewBoolValue(v bool, hint TypeHint) Value {
 	return Value{Type: TypeBool, RawValue: v, TypeHint: hint}
 }
 
-// AsBool returns the inner bool value or panics, if the Value is not a boolean.
-func (v Value) AsBool() bool {
+// BoolValue returns the inner bool value or panics, if the Value is not a boolean.
+func (v Value) BoolValue() bool {
 	if v.Type != TypeBool {
 		panic("value is not a boolean")
 	}
@@ -50,8 +50,8 @@ func NewStringValue(v string, hint TypeHint) Value {
 	return Value{Type: TypeString, RawValue: v, TypeHint: hint}
 }
 
-// AsString returns the inner string value or panics, if the Value is not a string.
-func (v Value) AsString() string {
+// StringValue returns the inner string value or panics, if the Value is not a string.
+func (v Value) StringValue() string {
 	if v.Type != TypeString {
 		panic("value is not a string")
 	}
@@ -63,8 +63,8 @@ func NewIntegerValue(v *big.Int, hint TypeHint) Value {
 	return Value{Type: TypeInteger, RawValue: v, TypeHint: hint}
 }
 
-// AsInteger returns the inner int value or panics, if the Value is not an integer.
-func (v Value) AsInteger() *big.Int {
+// IntegerValue returns the inner int value or panics, if the Value is not an integer.
+func (v Value) IntegerValue() *big.Int {
 	if v.Type != TypeInteger {
 		panic("value is not an integer")
 	}
@@ -76,8 +76,8 @@ func NewFloatValue(v *big.Float, hint TypeHint) Value {
 	return Value{Type: TypeFloat, RawValue: v, TypeHint: hint}
 }
 
-// AsFloat returns the inner float value or panics, if the Value is not a floating point number.
-func (v Value) AsFloat() *big.Float {
+// FloatValue returns the inner float value or panics, if the Value is not a floating point number.
+func (v Value) FloatValue() *big.Float {
 	if v.Type != TypeFloat {
 		panic("value is not a real number")
 	}

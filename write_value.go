@@ -139,13 +139,13 @@ func writeValue(w *writer, v *Value) error {
 
 	switch v.Type {
 	case TypeString:
-		return writeString(w, v.AsString())
+		return writeString(w, v.StringValue())
 	case TypeInteger:
-		return writeInteger(w, v.AsInteger())
+		return writeInteger(w, v.IntegerValue())
 	case TypeFloat:
-		return writeFloat(w, v.AsFloat())
+		return writeFloat(w, v.FloatValue())
 	case TypeBool:
-		return writeBool(w, v.AsBool())
+		return writeBool(w, v.BoolValue())
 	case TypeNull:
 		return writeNull(w)
 	default:

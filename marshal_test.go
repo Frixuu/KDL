@@ -49,10 +49,10 @@ func TestValueConverts(t *testing.T) {
 	n := 3
 	v, err := valueToKDLValue(reflect.ValueOf(n))
 	assert.NoError(t, err)
-	assert.EqualValues(t, n, v.AsInteger().Int64())
+	assert.EqualValues(t, n, v.IntegerValue().Int64())
 
 	s := "foo"
 	v, err = valueToKDLValue(reflect.ValueOf(s))
 	assert.NoError(t, err)
-	assert.EqualValues(t, s, v.AsString())
+	assert.EqualValues(t, s, v.StringValue())
 }

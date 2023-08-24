@@ -24,10 +24,10 @@ const inputSimple string = `
 func TestParsesSimpleDocument(t *testing.T) {
 	doc, err := ParseString(inputSimple)
 	assert.NoError(t, err)
-	assert.Equal(t, "John Smith", doc.Nodes[0].Args[0].AsString())
+	assert.Equal(t, "John Smith", doc.Nodes[0].Args[0].StringValue())
 	lauraProps := doc.Nodes[2].Children[1].Props
 	assert.Equal(t, 1, len(lauraProps))
-	assert.Equal(t, false, lauraProps["--social-media"].AsBool())
+	assert.Equal(t, false, lauraProps["--social-media"].BoolValue())
 }
 
 func BenchmarkParseSimpleDocument(b *testing.B) {

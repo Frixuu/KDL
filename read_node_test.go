@@ -46,7 +46,7 @@ func TestReadsNodeWithChildren(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "git", n.Props["type"].RawValue)
 	assert.Equal(t, 2, len(n.Children))
-	assert.Equal(t, "baz", n.Children[1].Args[0].AsString())
+	assert.Equal(t, "baz", n.Children[1].Args[0].StringValue())
 }
 
 func TestReadsLineContinuation(t *testing.T) {
@@ -55,7 +55,7 @@ func TestReadsLineContinuation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", n.Name)
 	assert.Equal(t, 1, len(n.Args))
-	assert.Equal(t, "bar", n.Args[0].AsString())
+	assert.Equal(t, "bar", n.Args[0].StringValue())
 }
 
 func TestReadsMultilineCommentAfterLineContinuation(t *testing.T) {
@@ -70,8 +70,8 @@ func TestReadsMultilineCommentAfterLineContinuation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, "foo", n.Name)
 	assert.Equal(t, 2, len(n.Args))
-	assert.Equal(t, "bar", n.Args[0].AsString())
-	assert.Equal(t, "baz", n.Args[1].AsString())
+	assert.Equal(t, "bar", n.Args[0].StringValue())
+	assert.Equal(t, "baz", n.Args[1].StringValue())
 }
 
 func TestReadsRTL(t *testing.T) {
@@ -80,5 +80,5 @@ func TestReadsRTL(t *testing.T) {
 	n, err := readNode(&reader)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(n.Props))
-	assert.EqualValues(t, 2, n.Props["الطاب"].AsInteger().Int64())
+	assert.EqualValues(t, 2, n.Props["الطاب"].IntegerValue().Int64())
 }
