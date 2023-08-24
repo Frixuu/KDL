@@ -35,10 +35,32 @@ func (n *Node) GetProp(key Identifier) Value {
 	return props[key]
 }
 
+// HasProp returns true if this Node has a property of that name.
+func (n *Node) HasProp(key Identifier) bool {
+	props := n.Props
+	if props == nil {
+		return false
+	}
+	val, ok := props[key]
+	if !ok {
+		return false
+	}
+	return val.Type != TypeInvalid
+}
+
 // SetProp sets or replaces a property of this Node.
 func (n *Node) SetProp(key Identifier, value Value) {
 	if n.Props == nil {
 		n.Props = make(map[Identifier]Value)
 	}
 	n.Props[key] = value
+}
+
+// RemoveProp removes a property from this Node.
+func (n *Node) RemoveProp(key Identifier) {
+	props := n.Props
+	if props == nil {
+		return
+	}
+	delete(props, key)
 }
