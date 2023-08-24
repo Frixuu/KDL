@@ -17,6 +17,8 @@ var (
 	// ErrUnexpectedEOF is a base error for when
 	// the data abruptly ends e.g. inside a string.
 	ErrUnexpectedEOF = io.ErrUnexpectedEOF
+	// ErrInvalidValueType happens when a raw value cannot be cast to a kdl.Value.
+	ErrInvalidValueType = errors.New("cannot transform to a valid kdl.Value type")
 )
 
 // ErrWithPosition wraps an error,

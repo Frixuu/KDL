@@ -16,8 +16,18 @@ func NewNode(name string) Node {
 	}
 }
 
-// AddArg adds a Value as an order-sensitive argument of this Node.
-func (n *Node) AddArg(arg Value) {
+// AddArg adds an element as an order-sensitive argument of this Node.
+func (n *Node) AddArg(arg interface{}) error {
+	v, err := ValueOf(arg)
+	if err != nil {
+		return err
+	}
+	n.AddArgValue(v)
+	return nil
+}
+
+// AddArgValue adds a Value as an order-sensitive argument of this Node.
+func (n *Node) AddArgValue(arg Value) {
 	n.Args = append(n.Args, arg)
 }
 
@@ -49,11 +59,25 @@ func (n *Node) HasProp(key Identifier) bool {
 }
 
 // SetProp sets or replaces a property of this Node.
-func (n *Node) SetProp(key Identifier, value Value) {
-	if n.Props == nil {
-		n.Props = make(map[Identifier]Value)
+func (n *Node) SetProp(key Identifier, value interface{}) error {
+
+	v, err := ValueOf(value)
+	if err != nil {
+		return err
 	}
-	n.Props[key] = value
+
+	n.SetPropValue(key, v)
+	return nil
+}
+
+// SetPropValue sets or replaces a property of this Node.
+func (n *Node) SetPropValue(key Identifier, value Value) {
+	props := n.Props
+	if props != nil {
+		props[key] = value
+	} else {
+		n.Props = map[Identifier]Value{key: value}
+	}
 }
 
 // RemoveProp removes a property from this Node.

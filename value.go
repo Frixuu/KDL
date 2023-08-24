@@ -3,6 +3,7 @@ package kdl
 import (
 	"errors"
 	"math/big"
+	"reflect"
 )
 
 // TypeTag discriminates between Value types.
@@ -87,4 +88,38 @@ func (v Value) FloatValue() *big.Float {
 // newInvalidValue constructs a new Value that is in an invalid state.
 func newInvalidValue() Value {
 	return Value{Type: TypeInvalid}
+}
+
+// ValueOf tries to construct a Value from a provided object.
+// The resulting Value, if valid, will not have a type hint.
+func ValueOf(v interface{}) (Value, error) {
+
+	if v == nil {
+		return NewNullValue(NoHint()), nil
+	}
+
+	switch v := v.(type) {
+	case Value:
+		return v, nil
+	case string:
+		return NewStringValue(v, NoHint()), nil
+	case bool:
+		return NewBoolValue(v, NoHint()), nil
+	case *big.Int:
+		return NewIntegerValue(v, NoHint()), nil
+	case int, int8, int16, int32, int64:
+		i := big.NewInt(reflect.ValueOf(v).Int())
+		return NewIntegerValue(i, NoHint()), nil
+	case uint, uint8, uint16, uint32, uint64:
+		i := new(big.Int)
+		i.SetUint64(uint64(reflect.ValueOf(v).Float()))
+		return NewIntegerValue(i, NoHint()), nil
+	case *big.Float:
+		return NewFloatValue(v, NoHint()), nil
+	case float32, float64:
+		f := big.NewFloat(v.(float64))
+		return NewFloatValue(f, NoHint()), nil
+	}
+
+	return newInvalidValue(), ErrInvalidValueType
 }
