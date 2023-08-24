@@ -32,7 +32,7 @@ func (n *Node) GetProp(key Identifier) Value {
 	if props == nil {
 		return newInvalidValue()
 	}
-	return n.Props[key]
+	return props[key]
 }
 
 // SetProp sets or replaces a property of this Node.
